@@ -1,7 +1,9 @@
-import { Link } from "@tanstack/react-router";
-import { Package, Menu, X } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Package, Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth, useIsAdmin } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
   { to: "/", label: "Home" },
@@ -14,6 +16,13 @@ const nav = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const { isAdmin } = useIsAdmin(user?.id);
+  const navigate = useNavigate();
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate({ to: "/", replace: true });
+  }
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -43,9 +52,25 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/login">Sign in</Link>
-          </Button>
+          {user ? (
+            <>
+              {isAdmin && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/admin"><LayoutDashboard className="mr-1.5 h-4 w-4" />Admin</Link>
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={signOut}>
+                <LogOut className="mr-1.5 h-4 w-4" />Sign out
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          )}
           <Button size="sm" className="gradient-brand text-white hover:opacity-90" asChild>
             <Link to="/track">Track shipment</Link>
           </Button>
@@ -70,9 +95,13 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/login">Sign in</Link>
-              </Button>
+              {user ? (
+                <Button variant="outline" size="sm" onClick={() => { signOut(); setOpen(false); }}>Sign out</Button>
+              ) : (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/auth">Sign in</Link>
+                </Button>
+              )}
               <Button size="sm" className="gradient-brand text-white" asChild>
                 <Link to="/track">Track</Link>
               </Button>
