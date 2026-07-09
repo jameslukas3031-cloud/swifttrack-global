@@ -52,9 +52,25 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/login">Sign in</Link>
-          </Button>
+          {user ? (
+            <>
+              {isAdmin && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/admin"><LayoutDashboard className="mr-1.5 h-4 w-4" />Admin</Link>
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={signOut}>
+                <LogOut className="mr-1.5 h-4 w-4" />Sign out
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          )}
           <Button size="sm" className="gradient-brand text-white hover:opacity-90" asChild>
             <Link to="/track">Track shipment</Link>
           </Button>
@@ -79,9 +95,13 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/login">Sign in</Link>
-              </Button>
+              {user ? (
+                <Button variant="outline" size="sm" onClick={() => { signOut(); setOpen(false); }}>Sign out</Button>
+              ) : (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/auth">Sign in</Link>
+                </Button>
+              )}
               <Button size="sm" className="gradient-brand text-white" asChild>
                 <Link to="/track">Track</Link>
               </Button>
