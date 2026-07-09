@@ -1,7 +1,9 @@
-import { Link } from "@tanstack/react-router";
-import { Package, Menu, X } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Package, Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth, useIsAdmin } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
   { to: "/", label: "Home" },

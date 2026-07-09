@@ -58,9 +58,10 @@ function AdminPage() {
   }
 
   async function updateStatus(id: string, status: string) {
-    const { error } = await supabase.from("shipments").update({ status }).eq("id", id);
+    const s = status as "pending"|"picked_up"|"in_transit"|"out_for_delivery"|"delivered"|"exception"|"cancelled";
+    const { error } = await supabase.from("shipments").update({ status: s }).eq("id", id);
     if (error) return toast.error(error.message);
-    await supabase.from("tracking_events").insert({ shipment_id: id, status, description: `Status updated to ${status}` });
+    await supabase.from("tracking_events").insert({ shipment_id: id, status: s, description: `Status updated to ${s}` });
     toast.success("Updated");
     loadAll();
   }
