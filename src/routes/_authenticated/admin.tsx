@@ -171,15 +171,32 @@ function AdminPage() {
         <TabsContent value="users">
           <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Joined</th></tr></thead>
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Joined</th><th className="px-4 py-3">Change role</th></tr></thead>
               <tbody>
-                {profiles.map((p) => (
-                  <tr key={p.id} className="border-t border-border">
-                    <td className="px-4 py-3">{p.full_name ?? "—"}</td>
-                    <td className="px-4 py-3">{p.email ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
-                  </tr>
-                ))}
+                {profiles.map((p) => {
+                  const r = userRoles[p.id] ?? "user";
+                  const isSuper = r === "super_admin";
+                  const label = isSuper ? "Super Admin" : r === "admin" ? "Admin" : "User";
+                  return (
+                    <tr key={p.id} className="border-t border-border">
+                      <td className="px-4 py-3">{p.full_name ?? "—"}</td>
+                      <td className="px-4 py-3">{p.email ?? "—"}</td>
+                      <td className="px-4 py-3"><Badge variant={isSuper ? "default" : "outline"}>{label}</Badge></td>
+                      <td className="px-4 py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        {isSuper ? <span className="text-xs text-muted-foreground">Protected</span> : (
+                          <Select value={r === "admin" ? "admin" : "user"} onValueChange={(v) => setUserRole(p.id, v as "admin"|"user")}>
+                            <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
