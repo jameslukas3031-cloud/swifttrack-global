@@ -32,12 +32,15 @@ function AdminPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [contactCount, setContactCount] = useState(0);
 
+  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
+
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return navigate({ to: "/auth" });
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-      const ok = !!roles?.some((r) => r.role === "admin" || r.role === "staff");
+      // Server-side check via RLS-protected function
+      const { data: isSuper } = await supabase.rpc("is_super_admin", { _user_id: u.user.id });
+      const ok = !!isSuper;
       setAuthorized(ok);
       if (!ok) return;
       loadAll();
@@ -45,16 +48,25 @@ function AdminPage() {
   }, [navigate]);
 
   async function loadAll() {
-    const [s, o, p, c] = await Promise.all([
+    const [s, o, p, c, r] = await Promise.all([
       supabase.from("shipments").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("orders").select("id,order_number,total,status,created_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("profiles").select("id,email,full_name,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("contact_messages").select("id", { count: "exact", head: true }),
+      supabase.from("user_roles").select("user_id,role"),
     ]);
     setShipments((s.data ?? []) as Shipment[]);
     setOrders((o.data ?? []) as Order[]);
     setProfiles((p.data ?? []) as Profile[]);
     setContactCount(c.count ?? 0);
+    const map: Record<string, string> = {};
+    for (const row of (r.data ?? []) as { user_id: string; role: string }[]) {
+      const prev = map[row.user_id];
+      // Rank: super_admin > admin > staff > user/customer
+      const rank = (x: string) => x === "super_admin" ? 4 : x === "admin" ? 3 : x === "staff" ? 2 : 1;
+      if (!prev || rank(row.role) > rank(prev)) map[row.user_id] = row.role;
+    }
+    setUserRoles(map);
   }
 
   async function updateStatus(id: string, status: string) {
@@ -66,11 +78,28 @@ function AdminPage() {
     loadAll();
   }
 
+  async function deleteShipment(id: string) {
+    if (!confirm("Delete this shipment?")) return;
+    const { error } = await supabase.from("shipments").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    loadAll();
+  }
+
+  async function setUserRole(userId: string, newRole: "admin" | "user") {
+    // Remove existing non-super_admin roles then insert new
+    await supabase.from("user_roles").delete().eq("user_id", userId).in("role", ["admin","staff","user","customer"]);
+    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: newRole });
+    if (error) return toast.error(error.message);
+    toast.success("Role updated");
+    loadAll();
+  }
+
   if (authorized === null) return <div className="p-10 text-center text-muted-foreground">Loading…</div>;
   if (!authorized) return (
     <div className="mx-auto max-w-md p-10 text-center">
-      <h1 className="font-display text-2xl font-bold">Admin access required</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Your account doesn't have admin or staff privileges. Ask an existing admin to grant your account a role in the <code>user_roles</code> table.</p>
+      <h1 className="font-display text-2xl font-bold">Access denied</h1>
+      <p className="mt-2 text-sm text-muted-foreground">The admin console is restricted to the super administrator.</p>
     </div>
   );
 
