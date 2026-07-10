@@ -124,7 +124,7 @@ function AdminPage() {
           <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="px-4 py-3">Tracking</th><th className="px-4 py-3">Recipient</th><th className="px-4 py-3">Service</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Update</th></tr>
+                <tr><th className="px-4 py-3">Tracking</th><th className="px-4 py-3">Recipient</th><th className="px-4 py-3">Service</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Update</th><th className="px-4 py-3"></th></tr>
               </thead>
               <tbody>
                 {shipments.map((s) => (
@@ -139,9 +139,12 @@ function AdminPage() {
                         <SelectContent>{STATUSES.map((st) => <SelectItem key={st} value={st}>{st}</SelectItem>)}</SelectContent>
                       </Select>
                     </td>
+                    <td className="px-4 py-3">
+                      <Button variant="ghost" size="sm" onClick={() => deleteShipment(s.id)}>Delete</Button>
+                    </td>
                   </tr>
                 ))}
-                {shipments.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No shipments.</td></tr>}
+                {shipments.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No shipments.</td></tr>}
               </tbody>
             </table>
           </div>
