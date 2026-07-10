@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Package, MapPin, Clock } from "lucide-react";
+import { Package, MapPin, Clock, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,12 +19,23 @@ type Shipment = {
 function Dashboard() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [email, setEmail] = useState<string>("");
+  const [roleLabel, setRoleLabel] = useState<string>("User");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
-    supabase.from("shipments").select("id,tracking_number,status,recipient_name,recipient_city,estimated_delivery,created_at")
-      .order("created_at", { ascending: false }).limit(20)
-      .then(({ data }) => setShipments((data ?? []) as Shipment[]));
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      setEmail(data.user?.email ?? "");
+      if (uid) {
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+        const rs = (roles ?? []).map((r) => r.role as string);
+        setRoleLabel(rs.includes("super_admin") ? "Super Admin" : rs.includes("admin") ? "Admin" : "User");
+      }
+      const { data: s } = await supabase.from("shipments")
+        .select("id,tracking_number,status,recipient_name,recipient_city,estimated_delivery,created_at")
+        .order("created_at", { ascending: false }).limit(20);
+      setShipments((s ?? []) as Shipment[]);
+    })();
   }, []);
 
   return (
@@ -32,7 +43,12 @@ function Dashboard() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Signed in as {email}</p>
-          <h1 className="mt-1 font-display text-3xl font-bold">Your dashboard</h1>
+          <h1 className="mt-1 flex items-center gap-3 font-display text-3xl font-bold">
+            Your dashboard
+            <Badge variant={roleLabel === "Super Admin" ? "default" : "outline"} className="gap-1 text-xs">
+              <ShieldCheck className="h-3.5 w-3.5" />{roleLabel}
+            </Badge>
+          </h1>
         </div>
         <Button asChild className="gradient-brand text-white"><Link to="/track">Track a shipment</Link></Button>
       </div>
@@ -42,6 +58,7 @@ function Dashboard() {
         <Stat icon={Clock} label="In transit" value={shipments.filter((s) => ["in_transit","picked_up","out_for_delivery"].includes(s.status)).length} />
         <Stat icon={MapPin} label="Delivered" value={shipments.filter((s) => s.status === "delivered").length} />
       </div>
+
 
       <h2 className="mt-10 font-display text-xl font-semibold">Recent shipments</h2>
       <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
