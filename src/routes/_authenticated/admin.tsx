@@ -32,12 +32,15 @@ function AdminPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [contactCount, setContactCount] = useState(0);
 
+  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
+
   useEffect(() => {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return navigate({ to: "/auth" });
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-      const ok = !!roles?.some((r) => r.role === "admin" || r.role === "staff");
+      // Server-side check via RLS-protected function
+      const { data: isSuper } = await supabase.rpc("is_super_admin", { _user_id: u.user.id });
+      const ok = !!isSuper;
       setAuthorized(ok);
       if (!ok) return;
       loadAll();
@@ -45,16 +48,25 @@ function AdminPage() {
   }, [navigate]);
 
   async function loadAll() {
-    const [s, o, p, c] = await Promise.all([
+    const [s, o, p, c, r] = await Promise.all([
       supabase.from("shipments").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("orders").select("id,order_number,total,status,created_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("profiles").select("id,email,full_name,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("contact_messages").select("id", { count: "exact", head: true }),
+      supabase.from("user_roles").select("user_id,role"),
     ]);
     setShipments((s.data ?? []) as Shipment[]);
     setOrders((o.data ?? []) as Order[]);
     setProfiles((p.data ?? []) as Profile[]);
     setContactCount(c.count ?? 0);
+    const map: Record<string, string> = {};
+    for (const row of (r.data ?? []) as { user_id: string; role: string }[]) {
+      const prev = map[row.user_id];
+      // Rank: super_admin > admin > staff > user/customer
+      const rank = (x: string) => x === "super_admin" ? 4 : x === "admin" ? 3 : x === "staff" ? 2 : 1;
+      if (!prev || rank(row.role) > rank(prev)) map[row.user_id] = row.role;
+    }
+    setUserRoles(map);
   }
 
   async function updateStatus(id: string, status: string) {
@@ -66,11 +78,28 @@ function AdminPage() {
     loadAll();
   }
 
+  async function deleteShipment(id: string) {
+    if (!confirm("Delete this shipment?")) return;
+    const { error } = await supabase.from("shipments").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    loadAll();
+  }
+
+  async function setUserRole(userId: string, newRole: "admin" | "user") {
+    // Remove existing non-super_admin roles then insert new
+    await supabase.from("user_roles").delete().eq("user_id", userId).in("role", ["admin","staff","user","customer"]);
+    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: newRole });
+    if (error) return toast.error(error.message);
+    toast.success("Role updated");
+    loadAll();
+  }
+
   if (authorized === null) return <div className="p-10 text-center text-muted-foreground">Loading…</div>;
   if (!authorized) return (
     <div className="mx-auto max-w-md p-10 text-center">
-      <h1 className="font-display text-2xl font-bold">Admin access required</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Your account doesn't have admin or staff privileges. Ask an existing admin to grant your account a role in the <code>user_roles</code> table.</p>
+      <h1 className="font-display text-2xl font-bold">Access denied</h1>
+      <p className="mt-2 text-sm text-muted-foreground">The admin console is restricted to the super administrator.</p>
     </div>
   );
 
@@ -95,7 +124,7 @@ function AdminPage() {
           <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="px-4 py-3">Tracking</th><th className="px-4 py-3">Recipient</th><th className="px-4 py-3">Service</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Update</th></tr>
+                <tr><th className="px-4 py-3">Tracking</th><th className="px-4 py-3">Recipient</th><th className="px-4 py-3">Service</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Update</th><th className="px-4 py-3"></th></tr>
               </thead>
               <tbody>
                 {shipments.map((s) => (
@@ -110,9 +139,12 @@ function AdminPage() {
                         <SelectContent>{STATUSES.map((st) => <SelectItem key={st} value={st}>{st}</SelectItem>)}</SelectContent>
                       </Select>
                     </td>
+                    <td className="px-4 py-3">
+                      <Button variant="ghost" size="sm" onClick={() => deleteShipment(s.id)}>Delete</Button>
+                    </td>
                   </tr>
                 ))}
-                {shipments.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No shipments.</td></tr>}
+                {shipments.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No shipments.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -139,15 +171,32 @@ function AdminPage() {
         <TabsContent value="users">
           <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Joined</th></tr></thead>
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Joined</th><th className="px-4 py-3">Change role</th></tr></thead>
               <tbody>
-                {profiles.map((p) => (
-                  <tr key={p.id} className="border-t border-border">
-                    <td className="px-4 py-3">{p.full_name ?? "—"}</td>
-                    <td className="px-4 py-3">{p.email ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
-                  </tr>
-                ))}
+                {profiles.map((p) => {
+                  const r = userRoles[p.id] ?? "user";
+                  const isSuper = r === "super_admin";
+                  const label = isSuper ? "Super Admin" : r === "admin" ? "Admin" : "User";
+                  return (
+                    <tr key={p.id} className="border-t border-border">
+                      <td className="px-4 py-3">{p.full_name ?? "—"}</td>
+                      <td className="px-4 py-3">{p.email ?? "—"}</td>
+                      <td className="px-4 py-3"><Badge variant={isSuper ? "default" : "outline"}>{label}</Badge></td>
+                      <td className="px-4 py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        {isSuper ? <span className="text-xs text-muted-foreground">Protected</span> : (
+                          <Select value={r === "admin" ? "admin" : "user"} onValueChange={(v) => setUserRole(p.id, v as "admin"|"user")}>
+                            <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
