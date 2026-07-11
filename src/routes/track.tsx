@@ -1,15 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Printer, Download, MapPin, Package, User, Truck, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Printer, MapPin, Package, User, Truck, CheckCircle2, Clock, AlertCircle, CreditCard, Camera } from "lucide-react";
 import { TrackSearch } from "@/components/track-search";
 import { TrackingMap } from "@/components/tracking-map";
-import { findShipment, demoTrackingNumbers } from "@/lib/mock-shipments";
+import { findShipment, demoTrackingNumbers, type Shipment as MockShipment } from "@/lib/mock-shipments";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/track")({
   validateSearch: z.object({ tn: z.string().optional() }),
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Track your shipment — Meridian" },
@@ -19,16 +23,47 @@ export const Route = createFileRoute("/track")({
   component: TrackPage,
 });
 
+type DbShipment = {
+  id: string; tracking_number: string; status: string; service_type: string;
+  sender_name: string; sender_address: string; sender_city: string | null; sender_country: string | null;
+  recipient_name: string; recipient_address: string; recipient_city: string | null; recipient_country: string | null;
+  shipping_fee: number | null; payment_status: string; parcel_image_url: string | null;
+  weight_kg: number | null; dimensions: string | null; package_type: string | null; courier_name: string | null;
+  estimated_delivery: string | null; created_at: string;
+  origin_lat: number | null; origin_lng: number | null;
+  destination_lat: number | null; destination_lng: number | null;
+  current_lat: number | null; current_lng: number | null;
+};
+type DbEvent = { id: string; status: string; location: string | null; description: string | null; event_time: string };
+
 function statusColor(s: string) {
-  if (s === "Delivered") return "bg-success text-success-foreground";
-  if (s === "Exception") return "bg-destructive text-destructive-foreground";
-  if (s === "Out For Delivery") return "bg-accent text-accent-foreground";
+  const k = s.toLowerCase();
+  if (k.includes("deliver")) return "bg-success text-success-foreground";
+  if (k.includes("exception")) return "bg-destructive text-destructive-foreground";
+  if (k.includes("out")) return "bg-accent text-accent-foreground";
   return "bg-primary text-primary-foreground";
 }
 
 function TrackPage() {
   const { tn } = Route.useSearch();
-  const shipment = useMemo(() => (tn ? findShipment(tn) : undefined), [tn]);
+  const mock: MockShipment | undefined = useMemo(() => (tn ? findShipment(tn) : undefined), [tn]);
+  const [db, setDb] = useState<DbShipment | null>(null);
+  const [events, setEvents] = useState<DbEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!tn || mock) return;
+    setLoading(true); setNotFound(false); setDb(null); setEvents([]);
+    (async () => {
+      const { data } = await supabase.from("shipments").select("*").eq("tracking_number", tn).maybeSingle();
+      if (!data) { setNotFound(true); setLoading(false); return; }
+      setDb(data as DbShipment);
+      const { data: ev } = await supabase.from("tracking_events").select("*").eq("shipment_id", data.id).order("event_time", { ascending: true });
+      setEvents((ev ?? []) as DbEvent[]);
+      setLoading(false);
+    })();
+  }, [tn, mock]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
@@ -38,11 +73,13 @@ function TrackPage() {
         <p className="mt-2 text-muted-foreground">No account needed. Enter any tracking number to see full route history.</p>
         <div className="mt-6">
           <TrackSearch variant="compact" />
-          <p className="mt-2 text-xs text-muted-foreground">Try: {demoTrackingNumbers.join(" · ")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">Demo: {demoTrackingNumbers.join(" · ")}</p>
         </div>
       </div>
 
-      {tn && !shipment && (
+      {tn && loading && <div className="mt-10 text-center text-muted-foreground">Looking up shipment…</div>}
+
+      {tn && !mock && notFound && (
         <div className="mt-10 rounded-xl border border-border bg-card p-8 text-center">
           <AlertCircle className="mx-auto h-8 w-8 text-destructive" />
           <h3 className="mt-3 font-display text-lg font-semibold">Tracking number not found</h3>
@@ -50,126 +87,176 @@ function TrackPage() {
         </div>
       )}
 
-      {shipment && (
-        <div className="mt-10 grid gap-6 lg:grid-cols-3">
-          {/* Left: overview + timeline */}
-          <div className="space-y-6 lg:col-span-2">
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-elevated">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tracking number</div>
-                  <div className="mt-1 font-mono text-lg font-semibold">{shipment.trackingNumber}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{shipment.service}</div>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(shipment.status)}`}>{shipment.status}</span>
-              </div>
+      {mock && <MockView shipment={mock} />}
 
-              <div className="mt-6">
-                <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-                  <span>{shipment.origin.label}</span>
-                  <span>{shipment.destination.label}</span>
-                </div>
-                <div className="relative mt-2 h-2 overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full gradient-brand transition-all" style={{ width: `${shipment.progress}%` }} />
-                </div>
-              </div>
+      {!mock && db && <DbView shipment={db} events={events} />}
+    </div>
+  );
+}
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-lg border border-border p-4">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Clock className="h-3.5 w-3.5" /> Estimated delivery</div>
-                  <div className="mt-1 font-semibold">{shipment.estimatedDelivery}</div>
-                </div>
-                <div className="rounded-lg border border-border p-4">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> Current location</div>
-                  <div className="mt-1 font-semibold">{shipment.currentLocation.label}</div>
-                </div>
-                <div className="rounded-lg border border-border p-4">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Package className="h-3.5 w-3.5" /> Package</div>
-                  <div className="mt-1 font-semibold">{shipment.package.weight} · {shipment.package.pieces} pcs</div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print receipt</Button>
-                <Button size="sm" variant="outline"><Download className="mr-2 h-4 w-4" /> Download PDF</Button>
-              </div>
+function MockView({ shipment }: { shipment: MockShipment }) {
+  return (
+    <div className="mt-10 grid gap-6 lg:grid-cols-3">
+      <div className="space-y-6 lg:col-span-2">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-elevated">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tracking number</div>
+              <div className="mt-1 font-mono text-lg font-semibold">{shipment.trackingNumber}</div>
+              <div className="mt-1 text-sm text-muted-foreground">{shipment.service}</div>
             </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColor(shipment.status)}`}>{shipment.status}</span>
+          </div>
+          <div className="mt-6"><div className="flex items-center justify-between text-xs font-medium text-muted-foreground"><span>{shipment.origin.label}</span><span>{shipment.destination.label}</span></div><div className="relative mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full gradient-brand" style={{ width: `${shipment.progress}%` }} /></div></div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Info icon={Clock} label="Estimated delivery" value={shipment.estimatedDelivery} />
+            <Info icon={MapPin} label="Current location" value={shipment.currentLocation.label} />
+            <Info icon={Package} label="Package" value={`${shipment.package.weight} · ${shipment.package.pieces} pcs`} />
+          </div>
+        </div>
+        <TrackingMap shipment={shipment} />
+      </div>
+      <aside className="space-y-6">
+        <Party title="Sender" p={{ name: shipment.sender.name, address: shipment.sender.address, city: `${shipment.sender.city}, ${shipment.sender.country}` }} />
+        <Party title="Receiver" p={{ name: shipment.receiver.name, address: shipment.receiver.address, city: `${shipment.receiver.city}, ${shipment.receiver.country}` }} />
+      </aside>
+    </div>
+  );
+}
 
-            <TrackingMap shipment={shipment} />
+function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] }) {
+  const displayStatus = shipment.status.replace(/_/g, " ");
+  const totalStatuses = ["pending","picked_up","in_transit","out_for_delivery","delivered"];
+  const idx = totalStatuses.indexOf(shipment.status);
+  const progress = idx >= 0 ? Math.round(((idx + 1) / totalStatuses.length) * 100) : 20;
+  const hasMap = shipment.origin_lat && shipment.destination_lat && shipment.current_lat;
 
-            {/* Timeline */}
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <h3 className="font-display text-lg font-semibold">Tracking timeline</h3>
-              <ol className="mt-6 space-y-6">
-                {[...shipment.events].reverse().map((e, i) => {
-                  const isLatest = i === 0;
-                  return (
-                    <li key={i} className="relative flex gap-4 pl-2">
-                      <div className="flex flex-col items-center">
-                        <span className={`grid h-8 w-8 place-items-center rounded-full ${isLatest ? "gradient-brand" : "bg-secondary"}`}>
-                          {e.status === "Delivered" ? (
-                            <CheckCircle2 className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} />
-                          ) : (
-                            <Truck className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} />
-                          )}
-                        </span>
-                        {i < shipment.events.length - 1 && <span className="mt-1 w-px flex-1 bg-border" />}
-                      </div>
-                      <div className="flex-1 pb-2">
-                        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                          <div className="font-semibold">{e.status}</div>
-                          <div className="text-xs text-muted-foreground">{format(new Date(e.timestamp), "MMM d, yyyy · HH:mm")}</div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">{e.location}</div>
-                        {e.note && <div className="mt-1 text-xs text-muted-foreground/80">{e.note}</div>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
+  return (
+    <div className="mt-10 grid gap-6 lg:grid-cols-3">
+      <div className="space-y-6 lg:col-span-2">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-elevated">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tracking number</div>
+              <div className="mt-1 font-mono text-lg font-semibold">{shipment.tracking_number}</div>
+              <div className="mt-1 text-sm text-muted-foreground capitalize">{shipment.service_type} · {shipment.courier_name ?? "In-house courier"}</div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusColor(displayStatus)}`}>{displayStatus}</span>
+              <Badge variant={shipment.payment_status === "paid" ? "default" : "outline"} className="capitalize">
+                <CreditCard className="mr-1 h-3 w-3" /> {shipment.payment_status}
+              </Badge>
             </div>
           </div>
-
-          {/* Right: parties */}
-          <aside className="space-y-6">
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <User className="h-3.5 w-3.5" /> Sender
-              </div>
-              <div className="mt-3 font-semibold">{shipment.sender.name}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{shipment.sender.address}</div>
-              <div className="text-sm text-muted-foreground">{shipment.sender.city}, {shipment.sender.country}</div>
+          <div className="mt-6">
+            <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>{shipment.sender_city ?? shipment.sender_country ?? "Origin"}</span>
+              <span>{shipment.recipient_city ?? shipment.recipient_country ?? "Destination"}</span>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <User className="h-3.5 w-3.5" /> Receiver
-              </div>
-              <div className="mt-3 font-semibold">{shipment.receiver.name}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{shipment.receiver.address}</div>
-              <div className="text-sm text-muted-foreground">{shipment.receiver.city}, {shipment.receiver.country}</div>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <Package className="h-3.5 w-3.5" /> Package details
-              </div>
-              <dl className="mt-3 space-y-2 text-sm">
-                {[
-                  ["Type", shipment.package.type],
-                  ["Weight", shipment.package.weight],
-                  ["Dimensions", shipment.package.dimensions],
-                  ["Pieces", shipment.package.pieces],
-                  ["Shipped", format(new Date(shipment.shippedAt), "MMM d, yyyy")],
-                ].map(([k, v]) => (
-                  <div key={k as string} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
-                    <dt className="text-muted-foreground">{k}</dt>
-                    <dd className="font-medium">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </aside>
+            <div className="relative mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full gradient-brand" style={{ width: `${progress}%` }} /></div>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Info icon={Clock} label="Estimated delivery" value={shipment.estimated_delivery ? format(new Date(shipment.estimated_delivery), "MMM d, yyyy") : "—"} />
+            <Info icon={Package} label="Weight / dims" value={`${shipment.weight_kg ?? "—"} kg · ${shipment.dimensions ?? "—"}`} />
+            <Info icon={CreditCard} label="Shipment fee" value={`$${Number(shipment.shipping_fee ?? 0).toFixed(2)}`} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print</Button>
+            <Link to="/receipt/$tn" params={{ tn: shipment.tracking_number }} target="_blank"><Button size="sm" variant="outline">Open receipt</Button></Link>
+          </div>
         </div>
-      )}
+
+        {shipment.parcel_image_url && (
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><Camera className="h-4 w-4" /> Parcel photo</div>
+            <img src={shipment.parcel_image_url} alt="Parcel" className="mt-3 max-h-96 w-full rounded-lg border border-border object-contain" />
+          </div>
+        )}
+
+        {hasMap && (
+          <TrackingMap shipment={{
+            trackingNumber: shipment.tracking_number, status: displayStatus, service: shipment.service_type,
+            origin: { label: `${shipment.sender_city ?? ""} ${shipment.sender_country ?? ""}`.trim(), lat: shipment.origin_lat!, lng: shipment.origin_lng! },
+            destination: { label: `${shipment.recipient_city ?? ""} ${shipment.recipient_country ?? ""}`.trim(), lat: shipment.destination_lat!, lng: shipment.destination_lng! },
+            currentLocation: { label: displayStatus, lat: shipment.current_lat!, lng: shipment.current_lng! },
+            progress, estimatedDelivery: "", shippedAt: shipment.created_at,
+            sender: { name: shipment.sender_name, address: shipment.sender_address, city: shipment.sender_city ?? "", country: shipment.sender_country ?? "" },
+            receiver: { name: shipment.recipient_name, address: shipment.recipient_address, city: shipment.recipient_city ?? "", country: shipment.recipient_country ?? "" },
+            package: { type: shipment.package_type ?? "Box", weight: `${shipment.weight_kg ?? 0} kg`, dimensions: shipment.dimensions ?? "—", pieces: 1 },
+            events: [],
+          }} />
+        )}
+
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <h3 className="font-display text-lg font-semibold">Tracking timeline</h3>
+          <ol className="mt-6 space-y-6">
+            {[...events].reverse().map((e, i) => {
+              const isLatest = i === 0;
+              return (
+                <li key={e.id} className="relative flex gap-4 pl-2">
+                  <div className="flex flex-col items-center">
+                    <span className={`grid h-8 w-8 place-items-center rounded-full ${isLatest ? "gradient-brand" : "bg-secondary"}`}>
+                      {e.status === "delivered" ? <CheckCircle2 className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} /> : <Truck className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} />}
+                    </span>
+                    {i < events.length - 1 && <span className="mt-1 w-px flex-1 bg-border" />}
+                  </div>
+                  <div className="flex-1 pb-2">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                      <div className="font-semibold capitalize">{e.status.replace(/_/g, " ")}</div>
+                      <div className="text-xs text-muted-foreground">{format(new Date(e.event_time), "MMM d, yyyy · HH:mm")}</div>
+                    </div>
+                    {e.location && <div className="text-sm text-muted-foreground">{e.location}</div>}
+                    {e.description && <div className="mt-1 text-xs text-muted-foreground/80">{e.description}</div>}
+                  </div>
+                </li>
+              );
+            })}
+            {events.length === 0 && <li className="text-sm text-muted-foreground">No tracking events yet.</li>}
+          </ol>
+        </div>
+      </div>
+
+      <aside className="space-y-6">
+        <Party title="Sender" p={{ name: shipment.sender_name, address: shipment.sender_address, city: `${shipment.sender_city ?? ""}${shipment.sender_country ? ", " + shipment.sender_country : ""}` }} />
+        <Party title="Receiver" p={{ name: shipment.recipient_name, address: shipment.recipient_address, city: `${shipment.recipient_city ?? ""}${shipment.recipient_country ? ", " + shipment.recipient_country : ""}` }} />
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"><Package className="h-3.5 w-3.5" /> Package</div>
+          <dl className="mt-3 space-y-2 text-sm">
+            {[
+              ["Type", shipment.package_type ?? "—"],
+              ["Weight", shipment.weight_kg ? `${shipment.weight_kg} kg` : "—"],
+              ["Dimensions", shipment.dimensions ?? "—"],
+              ["Courier", shipment.courier_name ?? "—"],
+              ["Fee", `$${Number(shipment.shipping_fee ?? 0).toFixed(2)}`],
+              ["Payment", shipment.payment_status],
+            ].map(([k, v]) => (
+              <div key={k} className="flex justify-between border-b border-border/60 pb-2 last:border-0">
+                <dt className="text-muted-foreground">{k}</dt><dd className="font-medium capitalize">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function Info({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</div>
+      <div className="mt-1 font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function Party({ title, p }: { title: string; p: { name: string; address: string; city: string } }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"><User className="h-3.5 w-3.5" /> {title}</div>
+      <div className="mt-3 font-semibold">{p.name}</div>
+      <div className="mt-1 text-sm text-muted-foreground">{p.address}</div>
+      <div className="text-sm text-muted-foreground">{p.city}</div>
     </div>
   );
 }
