@@ -175,7 +175,7 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
 
         {hasMap && (
           <TrackingMap shipment={{
-            trackingNumber: shipment.tracking_number, status: displayStatus, service: shipment.service_type,
+            trackingNumber: shipment.tracking_number, status: displayStatus as never, service: shipment.service_type,
             origin: { label: `${shipment.sender_city ?? ""} ${shipment.sender_country ?? ""}`.trim(), lat: shipment.origin_lat!, lng: shipment.origin_lng! },
             destination: { label: `${shipment.recipient_city ?? ""} ${shipment.recipient_country ?? ""}`.trim(), lat: shipment.destination_lat!, lng: shipment.destination_lng! },
             currentLocation: { label: displayStatus, lat: shipment.current_lat!, lng: shipment.current_lng! },
