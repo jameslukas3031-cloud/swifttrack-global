@@ -214,6 +214,7 @@ export type Database = {
       shipments: {
         Row: {
           cost: number | null
+          courier_name: string | null
           created_at: string
           current_lat: number | null
           current_lng: number | null
@@ -227,6 +228,9 @@ export type Database = {
           notes: string | null
           origin_lat: number | null
           origin_lng: number | null
+          package_type: string | null
+          parcel_image_url: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
           recipient_address: string
           recipient_city: string | null
           recipient_country: string | null
@@ -236,6 +240,7 @@ export type Database = {
           sender_country: string | null
           sender_name: string
           service_type: Database["public"]["Enums"]["service_type"]
+          shipping_fee: number | null
           status: Database["public"]["Enums"]["shipment_status"]
           tracking_number: string
           updated_at: string
@@ -244,6 +249,7 @@ export type Database = {
         }
         Insert: {
           cost?: number | null
+          courier_name?: string | null
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
@@ -257,6 +263,9 @@ export type Database = {
           notes?: string | null
           origin_lat?: number | null
           origin_lng?: number | null
+          package_type?: string | null
+          parcel_image_url?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           recipient_address: string
           recipient_city?: string | null
           recipient_country?: string | null
@@ -266,6 +275,7 @@ export type Database = {
           sender_country?: string | null
           sender_name: string
           service_type?: Database["public"]["Enums"]["service_type"]
+          shipping_fee?: number | null
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_number: string
           updated_at?: string
@@ -274,6 +284,7 @@ export type Database = {
         }
         Update: {
           cost?: number | null
+          courier_name?: string | null
           created_at?: string
           current_lat?: number | null
           current_lng?: number | null
@@ -287,6 +298,9 @@ export type Database = {
           notes?: string | null
           origin_lat?: number | null
           origin_lng?: number | null
+          package_type?: string | null
+          parcel_image_url?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           recipient_address?: string
           recipient_city?: string | null
           recipient_country?: string | null
@@ -296,6 +310,7 @@ export type Database = {
           sender_country?: string | null
           sender_name?: string
           service_type?: Database["public"]["Enums"]["service_type"]
+          shipping_fee?: number | null
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_number?: string
           updated_at?: string
@@ -386,6 +401,7 @@ export type Database = {
         | "delivered"
         | "cancelled"
         | "refunded"
+      payment_status: "unpaid" | "paid" | "refunded"
       service_type: "air" | "sea" | "road" | "rail" | "express"
       shipment_status:
         | "pending"
@@ -531,6 +547,7 @@ export const Constants = {
         "cancelled",
         "refunded",
       ],
+      payment_status: ["unpaid", "paid", "refunded"],
       service_type: ["air", "sea", "road", "rail", "express"],
       shipment_status: [
         "pending",
