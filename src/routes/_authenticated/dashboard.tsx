@@ -50,8 +50,30 @@ function Dashboard() {
             </Badge>
           </h1>
         </div>
-        <Button asChild className="gradient-brand text-white"><Link to="/track">Track a shipment</Link></Button>
+        <div className="flex flex-wrap gap-2">
+          {roleLabel === "Super Admin" && (
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/admin"><ShieldCheck className="h-4 w-4" />Open admin panel</Link>
+            </Button>
+          )}
+          <Button asChild className="gradient-brand text-white"><Link to="/track">Track a shipment</Link></Button>
+        </div>
       </div>
+
+      {roleLabel === "Super Admin" && (
+        <div className="mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold">Super admin controls</h2>
+              <p className="text-sm text-muted-foreground">Manage shipments, orders and user roles.</p>
+            </div>
+            <Button asChild className="gradient-brand text-white">
+              <Link to="/admin">Go to admin console</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <Stat icon={Package} label="Total shipments" value={shipments.length} />
