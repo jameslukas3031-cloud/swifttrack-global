@@ -448,6 +448,7 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
           <div className="mt-3 space-y-3">
             <div><Label>Name</Label><Input required value={f.sender_name} onChange={set("sender_name")} className="mt-1.5" /></div>
             <div><Label>Address</Label><Input required value={f.sender_address} onChange={set("sender_address")} className="mt-1.5" /></div>
+            <div><Label>Phone</Label><Input value={f.sender_phone} onChange={set("sender_phone")} className="mt-1.5" /></div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>City</Label><Input value={f.sender_city} onChange={set("sender_city")} className="mt-1.5" /></div>
               <div><Label>Country</Label><Input value={f.sender_country} onChange={set("sender_country")} className="mt-1.5" /></div>
