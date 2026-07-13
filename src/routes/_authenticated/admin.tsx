@@ -22,16 +22,24 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type Shipment = {
   id: string; tracking_number: string; status: string; service_type: string;
-  sender_name: string; recipient_name: string; recipient_city: string | null;
-  shipping_fee: number | null; payment_status: string; parcel_image_url: string | null;
+  sender_name: string; sender_phone?: string | null;
+  recipient_name: string; recipient_city: string | null; recipient_phone?: string | null;
+  shipping_fee: number | null; payment_status: string; amount_paid?: number | null;
+  parcel_image_url: string | null;
   weight_kg: number | null; dimensions: string | null; package_type: string | null;
+  package_description?: string | null; shipping_method?: string | null;
   courier_name: string | null; estimated_delivery: string | null;
   current_lat: number | null; current_lng: number | null;
+  admin_comments?: string | null;
   created_at: string; user_id: string | null;
 };
 type Profile = { id: string; email: string | null; full_name: string | null; created_at: string };
 
-const STATUSES = ["pending","picked_up","in_transit","out_for_delivery","delivered","exception","cancelled"];
+const STATUSES = [
+  "pending","created","picked_up","at_warehouse","customs_clearance","in_transit",
+  "arrived_distribution_center","out_for_delivery","delivered",
+  "delivery_failed","on_hold","delayed","returned_to_sender","exception","cancelled",
+];
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -238,12 +246,18 @@ function ShipmentsList({ list, search, setSearch, reload }: { list: Shipment[]; 
 function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
     shipping_fee: String(shipment.shipping_fee ?? 0),
+    amount_paid: String(shipment.amount_paid ?? 0),
     payment_status: shipment.payment_status,
     status: shipment.status,
     weight_kg: String(shipment.weight_kg ?? ""),
     dimensions: shipment.dimensions ?? "",
     package_type: shipment.package_type ?? "",
+    package_description: shipment.package_description ?? "",
+    shipping_method: shipment.shipping_method ?? "",
     courier_name: shipment.courier_name ?? "",
+    sender_phone: shipment.sender_phone ?? "",
+    recipient_phone: shipment.recipient_phone ?? "",
+    admin_comments: shipment.admin_comments ?? "",
     estimated_delivery: shipment.estimated_delivery ? shipment.estimated_delivery.slice(0, 10) : "",
     current_lat: String(shipment.current_lat ?? ""),
     current_lng: String(shipment.current_lng ?? ""),
@@ -253,23 +267,30 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
 
   async function save() {
     setSaving(true);
-    const { error } = await supabase.from("shipments").update({
+    const payload: Record<string, unknown> = {
       shipping_fee: Number(f.shipping_fee) || 0,
+      amount_paid: Number(f.amount_paid) || 0,
       payment_status: f.payment_status as "unpaid" | "paid" | "refunded",
-      status: f.status as "pending"|"picked_up"|"in_transit"|"out_for_delivery"|"delivered"|"exception"|"cancelled",
+      status: f.status as never,
       weight_kg: f.weight_kg ? Number(f.weight_kg) : null,
       dimensions: f.dimensions || null,
       package_type: f.package_type || null,
+      package_description: f.package_description || null,
+      shipping_method: f.shipping_method || null,
       courier_name: f.courier_name || null,
+      sender_phone: f.sender_phone || null,
+      recipient_phone: f.recipient_phone || null,
+      admin_comments: f.admin_comments || null,
       estimated_delivery: f.estimated_delivery || null,
       current_lat: f.current_lat ? Number(f.current_lat) : null,
       current_lng: f.current_lng ? Number(f.current_lng) : null,
       parcel_image_url: imageUrl || null,
-    }).eq("id", shipment.id);
+    };
+    const { error } = await supabase.from("shipments").update(payload as never).eq("id", shipment.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     if (f.status !== shipment.status) {
-      await supabase.from("tracking_events").insert({ shipment_id: shipment.id, status: f.status as "pending"|"picked_up"|"in_transit"|"out_for_delivery"|"delivered"|"exception"|"cancelled", description: `Status updated to ${f.status}` });
+      await supabase.from("tracking_events").insert({ shipment_id: shipment.id, status: f.status as never, description: `Status updated to ${f.status.replace(/_/g, " ")}` });
     }
     toast.success("Saved");
     onSaved();
@@ -277,13 +298,14 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={onClose}>
-      <Card className="max-h-[90vh] w-full max-w-2xl overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
+      <Card className="max-h-[90vh] w-full max-w-3xl overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-lg font-semibold">Edit shipment · <span className="font-mono text-sm">{shipment.tracking_number}</span></h3>
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div><Label>Shipment fee ($)</Label><Input type="number" step="0.01" value={f.shipping_fee} onChange={(e) => setF({ ...f, shipping_fee: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Amount paid ($)</Label><Input type="number" step="0.01" value={f.amount_paid} onChange={(e) => setF({ ...f, amount_paid: e.target.value })} className="mt-1.5" /></div>
           <div>
             <Label>Payment status</Label>
             <Select value={f.payment_status} onValueChange={(v) => setF({ ...f, payment_status: v })}>
@@ -295,16 +317,21 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
             <Label>Status</Label>
             <Select value={f.status} onValueChange={(v) => setF({ ...f, status: v })}>
               <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
+              <SelectContent>{STATUSES.map((x) => <SelectItem key={x} value={x}>{x.replace(/_/g," ")}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div><Label>Estimated delivery</Label><Input type="date" value={f.estimated_delivery} onChange={(e) => setF({ ...f, estimated_delivery: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Shipping method</Label><Input placeholder="Air, Sea, Road…" value={f.shipping_method} onChange={(e) => setF({ ...f, shipping_method: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Weight (kg)</Label><Input type="number" step="0.01" value={f.weight_kg} onChange={(e) => setF({ ...f, weight_kg: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Dimensions</Label><Input placeholder="30x20x10 cm" value={f.dimensions} onChange={(e) => setF({ ...f, dimensions: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Package type</Label><Input placeholder="Box, envelope…" value={f.package_type} onChange={(e) => setF({ ...f, package_type: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Courier</Label><Input value={f.courier_name} onChange={(e) => setF({ ...f, courier_name: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Sender phone</Label><Input value={f.sender_phone} onChange={(e) => setF({ ...f, sender_phone: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Recipient phone</Label><Input value={f.recipient_phone} onChange={(e) => setF({ ...f, recipient_phone: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Current lat</Label><Input type="number" step="0.000001" value={f.current_lat} onChange={(e) => setF({ ...f, current_lat: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Current lng</Label><Input type="number" step="0.000001" value={f.current_lng} onChange={(e) => setF({ ...f, current_lng: e.target.value })} className="mt-1.5" /></div>
+          <div className="sm:col-span-2"><Label>Package description</Label><Textarea value={f.package_description} onChange={(e) => setF({ ...f, package_description: e.target.value })} className="mt-1.5" /></div>
+          <div className="sm:col-span-2"><Label>Admin comments (shown on tracking page)</Label><Textarea value={f.admin_comments} onChange={(e) => setF({ ...f, admin_comments: e.target.value })} className="mt-1.5" /></div>
         </div>
         <div className="mt-6">
           <Label>Parcel image</Label>
@@ -318,6 +345,7 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
     </div>
   );
 }
+
 
 function ImageUploader({ shipmentId, value, onChange }: { shipmentId: string; value: string; onChange: (url: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -357,11 +385,12 @@ function ImageUploader({ shipmentId, value, onChange }: { shipmentId: string; va
 
 function CreateShipment({ onDone }: { onDone: () => void }) {
   const [f, setF] = useState({
-    sender_name: "", sender_address: "", sender_city: "", sender_country: "",
-    recipient_name: "", recipient_address: "", recipient_city: "", recipient_country: "",
+    sender_name: "", sender_address: "", sender_city: "", sender_country: "", sender_phone: "",
+    recipient_name: "", recipient_address: "", recipient_city: "", recipient_country: "", recipient_phone: "",
     service_type: "road", weight_kg: "1", dimensions: "", package_type: "Box",
-    courier_name: "", shipping_fee: "0", payment_status: "unpaid", estimated_delivery: "",
-    notes: "",
+    package_description: "", shipping_method: "",
+    courier_name: "", shipping_fee: "0", amount_paid: "0", payment_status: "unpaid", estimated_delivery: "",
+    notes: "", admin_comments: "",
   });
   const [saving, setSaving] = useState(false);
   const [pendingImage, setPendingImage] = useState<File | null>(null);
@@ -371,22 +400,27 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
     setSaving(true);
     const tracking_number = "GL" + Math.floor(Math.random() * 9e11 + 1e11).toString();
     const { data: u } = await supabase.auth.getUser();
-    const { data: inserted, error } = await supabase.from("shipments").insert({
+    const payload: Record<string, unknown> = {
       tracking_number,
       user_id: u.user?.id ?? null,
       service_type: f.service_type as "air"|"sea"|"road"|"rail"|"express",
-      sender_name: f.sender_name, sender_address: f.sender_address, sender_city: f.sender_city, sender_country: f.sender_country,
-      recipient_name: f.recipient_name, recipient_address: f.recipient_address, recipient_city: f.recipient_city, recipient_country: f.recipient_country,
+      sender_name: f.sender_name, sender_address: f.sender_address, sender_city: f.sender_city, sender_country: f.sender_country, sender_phone: f.sender_phone || null,
+      recipient_name: f.recipient_name, recipient_address: f.recipient_address, recipient_city: f.recipient_city, recipient_country: f.recipient_country, recipient_phone: f.recipient_phone || null,
       weight_kg: Number(f.weight_kg) || null,
       dimensions: f.dimensions || null,
       package_type: f.package_type || null,
+      package_description: f.package_description || null,
+      shipping_method: f.shipping_method || null,
       courier_name: f.courier_name || null,
       shipping_fee: Number(f.shipping_fee) || 0,
+      amount_paid: Number(f.amount_paid) || 0,
       payment_status: f.payment_status as "unpaid" | "paid" | "refunded",
       estimated_delivery: f.estimated_delivery || null,
       notes: f.notes || null,
-      status: "pending",
-    }).select("id").single();
+      admin_comments: f.admin_comments || null,
+      status: "created",
+    };
+    const { data: inserted, error } = await supabase.from("shipments").insert(payload as never).select("id").single();
     if (error || !inserted) { setSaving(false); return toast.error(error?.message ?? "Failed"); }
     if (pendingImage) {
       const ext = pendingImage.name.split(".").pop() ?? "jpg";
@@ -397,7 +431,7 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
         await supabase.from("shipments").update({ parcel_image_url: pub.publicUrl }).eq("id", inserted.id);
       }
     }
-    await supabase.from("tracking_events").insert({ shipment_id: inserted.id, status: "pending", description: "Shipment created" });
+    await supabase.from("tracking_events").insert({ shipment_id: inserted.id, status: "created" as never, description: "Shipment created", location: [f.sender_city, f.sender_country].filter(Boolean).join(", ") || null });
     setSaving(false);
     toast.success(`Created ${tracking_number}`);
     onDone();
@@ -414,6 +448,7 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
           <div className="mt-3 space-y-3">
             <div><Label>Name</Label><Input required value={f.sender_name} onChange={set("sender_name")} className="mt-1.5" /></div>
             <div><Label>Address</Label><Input required value={f.sender_address} onChange={set("sender_address")} className="mt-1.5" /></div>
+            <div><Label>Phone</Label><Input value={f.sender_phone} onChange={set("sender_phone")} className="mt-1.5" /></div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>City</Label><Input value={f.sender_city} onChange={set("sender_city")} className="mt-1.5" /></div>
               <div><Label>Country</Label><Input value={f.sender_country} onChange={set("sender_country")} className="mt-1.5" /></div>
@@ -425,6 +460,7 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
           <div className="mt-3 space-y-3">
             <div><Label>Name</Label><Input required value={f.recipient_name} onChange={set("recipient_name")} className="mt-1.5" /></div>
             <div><Label>Address</Label><Input required value={f.recipient_address} onChange={set("recipient_address")} className="mt-1.5" /></div>
+            <div><Label>Phone</Label><Input value={f.recipient_phone} onChange={set("recipient_phone")} className="mt-1.5" /></div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>City</Label><Input value={f.recipient_city} onChange={set("recipient_city")} className="mt-1.5" /></div>
               <div><Label>Country</Label><Input value={f.recipient_country} onChange={set("recipient_country")} className="mt-1.5" /></div>
@@ -456,7 +492,11 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
               <SelectContent>{["unpaid","paid","refunded"].map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="sm:col-span-3"><Label>Notes</Label><Textarea value={f.notes} onChange={set("notes")} className="mt-1.5" /></div>
+          <div><Label>Amount paid ($)</Label><Input type="number" step="0.01" value={f.amount_paid} onChange={set("amount_paid")} className="mt-1.5" /></div>
+          <div><Label>Shipping method</Label><Input placeholder="Air / Sea / Road" value={f.shipping_method} onChange={set("shipping_method")} className="mt-1.5" /></div>
+          <div className="sm:col-span-3"><Label>Package description</Label><Textarea value={f.package_description} onChange={set("package_description")} className="mt-1.5" /></div>
+          <div className="sm:col-span-3"><Label>Notes (internal)</Label><Textarea value={f.notes} onChange={set("notes")} className="mt-1.5" /></div>
+          <div className="sm:col-span-3"><Label>Admin comments (shown on tracking page)</Label><Textarea value={f.admin_comments} onChange={set("admin_comments")} className="mt-1.5" /></div>
         </div>
         <div className="mt-4">
           <Label>Parcel image</Label>
@@ -488,7 +528,7 @@ function TrackingUpdates({ shipments, reload }: { shipments: Shipment[]; reload:
 
   async function add() {
     if (!selected) return toast.error("Pick a shipment");
-    const s = status as "pending"|"picked_up"|"in_transit"|"out_for_delivery"|"delivered"|"exception"|"cancelled";
+    const s = status as never;
     const { error } = await supabase.from("tracking_events").insert({ shipment_id: selected, status: s, location: location || null, description: description || null });
     if (error) return toast.error(error.message);
     await supabase.from("shipments").update({ status: s }).eq("id", selected);

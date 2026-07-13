@@ -213,6 +213,9 @@ export type Database = {
       }
       shipments: {
         Row: {
+          admin_comments: string | null
+          admin_signature_url: string | null
+          amount_paid: number | null
           cost: number | null
           courier_name: string | null
           created_at: string
@@ -228,6 +231,7 @@ export type Database = {
           notes: string | null
           origin_lat: number | null
           origin_lng: number | null
+          package_description: string | null
           package_type: string | null
           parcel_image_url: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
@@ -235,12 +239,15 @@ export type Database = {
           recipient_city: string | null
           recipient_country: string | null
           recipient_name: string
+          recipient_phone: string | null
           sender_address: string
           sender_city: string | null
           sender_country: string | null
           sender_name: string
+          sender_phone: string | null
           service_type: Database["public"]["Enums"]["service_type"]
           shipping_fee: number | null
+          shipping_method: string | null
           status: Database["public"]["Enums"]["shipment_status"]
           tracking_number: string
           updated_at: string
@@ -248,6 +255,9 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          admin_comments?: string | null
+          admin_signature_url?: string | null
+          amount_paid?: number | null
           cost?: number | null
           courier_name?: string | null
           created_at?: string
@@ -263,6 +273,7 @@ export type Database = {
           notes?: string | null
           origin_lat?: number | null
           origin_lng?: number | null
+          package_description?: string | null
           package_type?: string | null
           parcel_image_url?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
@@ -270,12 +281,15 @@ export type Database = {
           recipient_city?: string | null
           recipient_country?: string | null
           recipient_name: string
+          recipient_phone?: string | null
           sender_address: string
           sender_city?: string | null
           sender_country?: string | null
           sender_name: string
+          sender_phone?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
           shipping_fee?: number | null
+          shipping_method?: string | null
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_number: string
           updated_at?: string
@@ -283,6 +297,9 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          admin_comments?: string | null
+          admin_signature_url?: string | null
+          amount_paid?: number | null
           cost?: number | null
           courier_name?: string | null
           created_at?: string
@@ -298,6 +315,7 @@ export type Database = {
           notes?: string | null
           origin_lat?: number | null
           origin_lng?: number | null
+          package_description?: string | null
           package_type?: string | null
           parcel_image_url?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
@@ -305,12 +323,15 @@ export type Database = {
           recipient_city?: string | null
           recipient_country?: string | null
           recipient_name?: string
+          recipient_phone?: string | null
           sender_address?: string
           sender_city?: string | null
           sender_country?: string | null
           sender_name?: string
+          sender_phone?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
           shipping_fee?: number | null
+          shipping_method?: string | null
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_number?: string
           updated_at?: string
@@ -411,6 +432,14 @@ export type Database = {
         | "delivered"
         | "exception"
         | "cancelled"
+        | "created"
+        | "at_warehouse"
+        | "customs_clearance"
+        | "arrived_distribution_center"
+        | "delivery_failed"
+        | "on_hold"
+        | "delayed"
+        | "returned_to_sender"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -557,6 +586,14 @@ export const Constants = {
         "delivered",
         "exception",
         "cancelled",
+        "created",
+        "at_warehouse",
+        "customs_clearance",
+        "arrived_distribution_center",
+        "delivery_failed",
+        "on_hold",
+        "delayed",
+        "returned_to_sender",
       ],
     },
   },

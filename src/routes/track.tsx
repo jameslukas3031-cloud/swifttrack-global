@@ -25,16 +25,20 @@ export const Route = createFileRoute("/track")({
 
 type DbShipment = {
   id: string; tracking_number: string; status: string; service_type: string;
-  sender_name: string; sender_address: string; sender_city: string | null; sender_country: string | null;
-  recipient_name: string; recipient_address: string; recipient_city: string | null; recipient_country: string | null;
-  shipping_fee: number | null; payment_status: string; parcel_image_url: string | null;
-  weight_kg: number | null; dimensions: string | null; package_type: string | null; courier_name: string | null;
-  estimated_delivery: string | null; created_at: string;
+  sender_name: string; sender_address: string; sender_city: string | null; sender_country: string | null; sender_phone: string | null;
+  recipient_name: string; recipient_address: string; recipient_city: string | null; recipient_country: string | null; recipient_phone: string | null;
+  shipping_fee: number | null; payment_status: string; amount_paid: number | null; parcel_image_url: string | null;
+  weight_kg: number | null; dimensions: string | null; package_type: string | null; package_description: string | null;
+  shipping_method: string | null; courier_name: string | null;
+  estimated_delivery: string | null; created_at: string; updated_at: string;
+  admin_comments: string | null;
   origin_lat: number | null; origin_lng: number | null;
   destination_lat: number | null; destination_lng: number | null;
   current_lat: number | null; current_lng: number | null;
 };
 type DbEvent = { id: string; status: string; location: string | null; description: string | null; event_time: string };
+
+const STATUS_FLOW = ["pending","created","picked_up","at_warehouse","customs_clearance","in_transit","arrived_distribution_center","out_for_delivery","delivered"];
 
 function statusColor(s: string) {
   const k = s.toLowerCase();
@@ -126,10 +130,13 @@ function MockView({ shipment }: { shipment: MockShipment }) {
 
 function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] }) {
   const displayStatus = shipment.status.replace(/_/g, " ");
-  const totalStatuses = ["pending","picked_up","in_transit","out_for_delivery","delivered"];
-  const idx = totalStatuses.indexOf(shipment.status);
-  const progress = idx >= 0 ? Math.round(((idx + 1) / totalStatuses.length) * 100) : 20;
+  const idx = STATUS_FLOW.indexOf(shipment.status);
+  const isTerminal = ["delivered","returned_to_sender","cancelled"].includes(shipment.status);
+  const progress = shipment.status === "delivered" ? 100 : idx >= 0 ? Math.round(((idx + 1) / STATUS_FLOW.length) * 100) : 15;
   const hasMap = shipment.origin_lat && shipment.destination_lat && shipment.current_lat;
+  const latestEvent = events.length ? [...events].sort((a, b) => +new Date(b.event_time) - +new Date(a.event_time))[0] : null;
+  const currentLocation = latestEvent?.location ?? [shipment.sender_city, shipment.sender_country].filter(Boolean).join(", ") ?? "—";
+  const lastUpdated = latestEvent?.event_time ?? shipment.updated_at ?? shipment.created_at;
 
   return (
     <div className="mt-10 grid gap-6 lg:grid-cols-3">
@@ -139,7 +146,7 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
             <div>
               <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tracking number</div>
               <div className="mt-1 font-mono text-lg font-semibold">{shipment.tracking_number}</div>
-              <div className="mt-1 text-sm text-muted-foreground capitalize">{shipment.service_type} · {shipment.courier_name ?? "In-house courier"}</div>
+              <div className="mt-1 text-sm text-muted-foreground capitalize">{shipment.service_type} · {shipment.shipping_method ?? shipment.courier_name ?? "In-house courier"}</div>
             </div>
             <div className="flex flex-col items-end gap-2">
               <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusColor(displayStatus)}`}>{displayStatus}</span>
@@ -151,20 +158,29 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
           <div className="mt-6">
             <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
               <span>{shipment.sender_city ?? shipment.sender_country ?? "Origin"}</span>
+              <span className="font-semibold text-foreground">{progress}%</span>
               <span>{shipment.recipient_city ?? shipment.recipient_country ?? "Destination"}</span>
             </div>
-            <div className="relative mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full gradient-brand" style={{ width: `${progress}%` }} /></div>
+            <div className="relative mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className={`h-full ${isTerminal && shipment.status !== "delivered" ? "bg-destructive" : "gradient-brand"}`} style={{ width: `${progress}%` }} /></div>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Info icon={MapPin} label="Current location" value={currentLocation || "—"} />
+            <Info icon={Clock} label="Last updated" value={format(new Date(lastUpdated), "MMM d, HH:mm")} />
             <Info icon={Clock} label="Estimated delivery" value={shipment.estimated_delivery ? format(new Date(shipment.estimated_delivery), "MMM d, yyyy") : "—"} />
-            <Info icon={Package} label="Weight / dims" value={`${shipment.weight_kg ?? "—"} kg · ${shipment.dimensions ?? "—"}`} />
-            <Info icon={CreditCard} label="Shipment fee" value={`$${Number(shipment.shipping_fee ?? 0).toFixed(2)}`} />
+            <Info icon={CreditCard} label="Amount paid" value={`$${Number(shipment.amount_paid ?? 0).toFixed(2)} / $${Number(shipment.shipping_fee ?? 0).toFixed(2)}`} />
           </div>
+          {shipment.admin_comments && (
+            <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Admin note</div>
+              <div className="mt-1 whitespace-pre-wrap">{shipment.admin_comments}</div>
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print</Button>
             <Link to="/receipt/$tn" params={{ tn: shipment.tracking_number }} target="_blank"><Button size="sm" variant="outline">Open receipt</Button></Link>
           </div>
         </div>
+
 
         {shipment.parcel_image_url && (
           <div className="rounded-2xl border border-border bg-card p-6">
