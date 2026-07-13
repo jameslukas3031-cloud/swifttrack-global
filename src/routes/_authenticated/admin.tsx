@@ -385,11 +385,12 @@ function ImageUploader({ shipmentId, value, onChange }: { shipmentId: string; va
 
 function CreateShipment({ onDone }: { onDone: () => void }) {
   const [f, setF] = useState({
-    sender_name: "", sender_address: "", sender_city: "", sender_country: "",
-    recipient_name: "", recipient_address: "", recipient_city: "", recipient_country: "",
+    sender_name: "", sender_address: "", sender_city: "", sender_country: "", sender_phone: "",
+    recipient_name: "", recipient_address: "", recipient_city: "", recipient_country: "", recipient_phone: "",
     service_type: "road", weight_kg: "1", dimensions: "", package_type: "Box",
-    courier_name: "", shipping_fee: "0", payment_status: "unpaid", estimated_delivery: "",
-    notes: "",
+    package_description: "", shipping_method: "",
+    courier_name: "", shipping_fee: "0", amount_paid: "0", payment_status: "unpaid", estimated_delivery: "",
+    notes: "", admin_comments: "",
   });
   const [saving, setSaving] = useState(false);
   const [pendingImage, setPendingImage] = useState<File | null>(null);
@@ -399,22 +400,27 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
     setSaving(true);
     const tracking_number = "GL" + Math.floor(Math.random() * 9e11 + 1e11).toString();
     const { data: u } = await supabase.auth.getUser();
-    const { data: inserted, error } = await supabase.from("shipments").insert({
+    const payload: Record<string, unknown> = {
       tracking_number,
       user_id: u.user?.id ?? null,
       service_type: f.service_type as "air"|"sea"|"road"|"rail"|"express",
-      sender_name: f.sender_name, sender_address: f.sender_address, sender_city: f.sender_city, sender_country: f.sender_country,
-      recipient_name: f.recipient_name, recipient_address: f.recipient_address, recipient_city: f.recipient_city, recipient_country: f.recipient_country,
+      sender_name: f.sender_name, sender_address: f.sender_address, sender_city: f.sender_city, sender_country: f.sender_country, sender_phone: f.sender_phone || null,
+      recipient_name: f.recipient_name, recipient_address: f.recipient_address, recipient_city: f.recipient_city, recipient_country: f.recipient_country, recipient_phone: f.recipient_phone || null,
       weight_kg: Number(f.weight_kg) || null,
       dimensions: f.dimensions || null,
       package_type: f.package_type || null,
+      package_description: f.package_description || null,
+      shipping_method: f.shipping_method || null,
       courier_name: f.courier_name || null,
       shipping_fee: Number(f.shipping_fee) || 0,
+      amount_paid: Number(f.amount_paid) || 0,
       payment_status: f.payment_status as "unpaid" | "paid" | "refunded",
       estimated_delivery: f.estimated_delivery || null,
       notes: f.notes || null,
-      status: "pending",
-    }).select("id").single();
+      admin_comments: f.admin_comments || null,
+      status: "created",
+    };
+    const { data: inserted, error } = await supabase.from("shipments").insert(payload as never).select("id").single();
     if (error || !inserted) { setSaving(false); return toast.error(error?.message ?? "Failed"); }
     if (pendingImage) {
       const ext = pendingImage.name.split(".").pop() ?? "jpg";
@@ -425,7 +431,7 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
         await supabase.from("shipments").update({ parcel_image_url: pub.publicUrl }).eq("id", inserted.id);
       }
     }
-    await supabase.from("tracking_events").insert({ shipment_id: inserted.id, status: "pending", description: "Shipment created" });
+    await supabase.from("tracking_events").insert({ shipment_id: inserted.id, status: "created" as never, description: "Shipment created", location: [f.sender_city, f.sender_country].filter(Boolean).join(", ") || null });
     setSaving(false);
     toast.success(`Created ${tracking_number}`);
     onDone();
