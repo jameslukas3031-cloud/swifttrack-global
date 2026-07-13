@@ -22,11 +22,15 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type Shipment = {
   id: string; tracking_number: string; status: string; service_type: string;
-  sender_name: string; recipient_name: string; recipient_city: string | null;
-  shipping_fee: number | null; payment_status: string; parcel_image_url: string | null;
+  sender_name: string; sender_phone?: string | null;
+  recipient_name: string; recipient_city: string | null; recipient_phone?: string | null;
+  shipping_fee: number | null; payment_status: string; amount_paid?: number | null;
+  parcel_image_url: string | null;
   weight_kg: number | null; dimensions: string | null; package_type: string | null;
+  package_description?: string | null; shipping_method?: string | null;
   courier_name: string | null; estimated_delivery: string | null;
   current_lat: number | null; current_lng: number | null;
+  admin_comments?: string | null;
   created_at: string; user_id: string | null;
 };
 type Profile = { id: string; email: string | null; full_name: string | null; created_at: string };
