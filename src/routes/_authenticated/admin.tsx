@@ -492,7 +492,11 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
               <SelectContent>{["unpaid","paid","refunded"].map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="sm:col-span-3"><Label>Notes</Label><Textarea value={f.notes} onChange={set("notes")} className="mt-1.5" /></div>
+          <div><Label>Amount paid ($)</Label><Input type="number" step="0.01" value={f.amount_paid} onChange={set("amount_paid")} className="mt-1.5" /></div>
+          <div><Label>Shipping method</Label><Input placeholder="Air / Sea / Road" value={f.shipping_method} onChange={set("shipping_method")} className="mt-1.5" /></div>
+          <div className="sm:col-span-3"><Label>Package description</Label><Textarea value={f.package_description} onChange={set("package_description")} className="mt-1.5" /></div>
+          <div className="sm:col-span-3"><Label>Notes (internal)</Label><Textarea value={f.notes} onChange={set("notes")} className="mt-1.5" /></div>
+          <div className="sm:col-span-3"><Label>Admin comments (shown on tracking page)</Label><Textarea value={f.admin_comments} onChange={set("admin_comments")} className="mt-1.5" /></div>
         </div>
         <div className="mt-4">
           <Label>Parcel image</Label>
