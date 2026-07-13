@@ -31,7 +31,11 @@ type Shipment = {
 };
 type Profile = { id: string; email: string | null; full_name: string | null; created_at: string };
 
-const STATUSES = ["pending","picked_up","in_transit","out_for_delivery","delivered","exception","cancelled"];
+const STATUSES = [
+  "pending","created","picked_up","at_warehouse","customs_clearance","in_transit",
+  "arrived_distribution_center","out_for_delivery","delivered",
+  "delivery_failed","on_hold","delayed","returned_to_sender","exception","cancelled",
+];
 
 function AdminPage() {
   const navigate = useNavigate();
