@@ -25,16 +25,20 @@ export const Route = createFileRoute("/track")({
 
 type DbShipment = {
   id: string; tracking_number: string; status: string; service_type: string;
-  sender_name: string; sender_address: string; sender_city: string | null; sender_country: string | null;
-  recipient_name: string; recipient_address: string; recipient_city: string | null; recipient_country: string | null;
-  shipping_fee: number | null; payment_status: string; parcel_image_url: string | null;
-  weight_kg: number | null; dimensions: string | null; package_type: string | null; courier_name: string | null;
-  estimated_delivery: string | null; created_at: string;
+  sender_name: string; sender_address: string; sender_city: string | null; sender_country: string | null; sender_phone: string | null;
+  recipient_name: string; recipient_address: string; recipient_city: string | null; recipient_country: string | null; recipient_phone: string | null;
+  shipping_fee: number | null; payment_status: string; amount_paid: number | null; parcel_image_url: string | null;
+  weight_kg: number | null; dimensions: string | null; package_type: string | null; package_description: string | null;
+  shipping_method: string | null; courier_name: string | null;
+  estimated_delivery: string | null; created_at: string; updated_at: string;
+  admin_comments: string | null;
   origin_lat: number | null; origin_lng: number | null;
   destination_lat: number | null; destination_lng: number | null;
   current_lat: number | null; current_lng: number | null;
 };
 type DbEvent = { id: string; status: string; location: string | null; description: string | null; event_time: string };
+
+const STATUS_FLOW = ["pending","created","picked_up","at_warehouse","customs_clearance","in_transit","arrived_distribution_center","out_for_delivery","delivered"];
 
 function statusColor(s: string) {
   const k = s.toLowerCase();
