@@ -260,7 +260,7 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
     const { error } = await supabase.from("shipments").update({
       shipping_fee: Number(f.shipping_fee) || 0,
       payment_status: f.payment_status as "unpaid" | "paid" | "refunded",
-      status: f.status as "pending"|"picked_up"|"in_transit"|"out_for_delivery"|"delivered"|"exception"|"cancelled",
+      status: f.status as never,
       weight_kg: f.weight_kg ? Number(f.weight_kg) : null,
       dimensions: f.dimensions || null,
       package_type: f.package_type || null,
@@ -273,7 +273,7 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
     setSaving(false);
     if (error) return toast.error(error.message);
     if (f.status !== shipment.status) {
-      await supabase.from("tracking_events").insert({ shipment_id: shipment.id, status: f.status as "pending"|"picked_up"|"in_transit"|"out_for_delivery"|"delivered"|"exception"|"cancelled", description: `Status updated to ${f.status}` });
+      await supabase.from("tracking_events").insert({ shipment_id: shipment.id, status: f.status as never, description: `Status updated to ${f.status}` });
     }
     toast.success("Saved");
     onSaved();
@@ -492,7 +492,7 @@ function TrackingUpdates({ shipments, reload }: { shipments: Shipment[]; reload:
 
   async function add() {
     if (!selected) return toast.error("Pick a shipment");
-    const s = status as "pending"|"picked_up"|"in_transit"|"out_for_delivery"|"delivered"|"exception"|"cancelled";
+    const s = status as never;
     const { error } = await supabase.from("tracking_events").insert({ shipment_id: selected, status: s, location: location || null, description: description || null });
     if (error) return toast.error(error.message);
     await supabase.from("shipments").update({ status: s }).eq("id", selected);
