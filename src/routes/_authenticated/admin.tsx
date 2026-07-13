@@ -246,12 +246,18 @@ function ShipmentsList({ list, search, setSearch, reload }: { list: Shipment[]; 
 function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
     shipping_fee: String(shipment.shipping_fee ?? 0),
+    amount_paid: String(shipment.amount_paid ?? 0),
     payment_status: shipment.payment_status,
     status: shipment.status,
     weight_kg: String(shipment.weight_kg ?? ""),
     dimensions: shipment.dimensions ?? "",
     package_type: shipment.package_type ?? "",
+    package_description: shipment.package_description ?? "",
+    shipping_method: shipment.shipping_method ?? "",
     courier_name: shipment.courier_name ?? "",
+    sender_phone: shipment.sender_phone ?? "",
+    recipient_phone: shipment.recipient_phone ?? "",
+    admin_comments: shipment.admin_comments ?? "",
     estimated_delivery: shipment.estimated_delivery ? shipment.estimated_delivery.slice(0, 10) : "",
     current_lat: String(shipment.current_lat ?? ""),
     current_lng: String(shipment.current_lng ?? ""),
@@ -261,23 +267,30 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
 
   async function save() {
     setSaving(true);
-    const { error } = await supabase.from("shipments").update({
+    const payload: Record<string, unknown> = {
       shipping_fee: Number(f.shipping_fee) || 0,
+      amount_paid: Number(f.amount_paid) || 0,
       payment_status: f.payment_status as "unpaid" | "paid" | "refunded",
       status: f.status as never,
       weight_kg: f.weight_kg ? Number(f.weight_kg) : null,
       dimensions: f.dimensions || null,
       package_type: f.package_type || null,
+      package_description: f.package_description || null,
+      shipping_method: f.shipping_method || null,
       courier_name: f.courier_name || null,
+      sender_phone: f.sender_phone || null,
+      recipient_phone: f.recipient_phone || null,
+      admin_comments: f.admin_comments || null,
       estimated_delivery: f.estimated_delivery || null,
       current_lat: f.current_lat ? Number(f.current_lat) : null,
       current_lng: f.current_lng ? Number(f.current_lng) : null,
       parcel_image_url: imageUrl || null,
-    }).eq("id", shipment.id);
+    };
+    const { error } = await supabase.from("shipments").update(payload as never).eq("id", shipment.id);
     setSaving(false);
     if (error) return toast.error(error.message);
     if (f.status !== shipment.status) {
-      await supabase.from("tracking_events").insert({ shipment_id: shipment.id, status: f.status as never, description: `Status updated to ${f.status}` });
+      await supabase.from("tracking_events").insert({ shipment_id: shipment.id, status: f.status as never, description: `Status updated to ${f.status.replace(/_/g, " ")}` });
     }
     toast.success("Saved");
     onSaved();
@@ -285,13 +298,14 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={onClose}>
-      <Card className="max-h-[90vh] w-full max-w-2xl overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
+      <Card className="max-h-[90vh] w-full max-w-3xl overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-lg font-semibold">Edit shipment · <span className="font-mono text-sm">{shipment.tracking_number}</span></h3>
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div><Label>Shipment fee ($)</Label><Input type="number" step="0.01" value={f.shipping_fee} onChange={(e) => setF({ ...f, shipping_fee: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Amount paid ($)</Label><Input type="number" step="0.01" value={f.amount_paid} onChange={(e) => setF({ ...f, amount_paid: e.target.value })} className="mt-1.5" /></div>
           <div>
             <Label>Payment status</Label>
             <Select value={f.payment_status} onValueChange={(v) => setF({ ...f, payment_status: v })}>
@@ -303,16 +317,21 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
             <Label>Status</Label>
             <Select value={f.status} onValueChange={(v) => setF({ ...f, status: v })}>
               <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
+              <SelectContent>{STATUSES.map((x) => <SelectItem key={x} value={x}>{x.replace(/_/g," ")}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div><Label>Estimated delivery</Label><Input type="date" value={f.estimated_delivery} onChange={(e) => setF({ ...f, estimated_delivery: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Shipping method</Label><Input placeholder="Air, Sea, Road…" value={f.shipping_method} onChange={(e) => setF({ ...f, shipping_method: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Weight (kg)</Label><Input type="number" step="0.01" value={f.weight_kg} onChange={(e) => setF({ ...f, weight_kg: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Dimensions</Label><Input placeholder="30x20x10 cm" value={f.dimensions} onChange={(e) => setF({ ...f, dimensions: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Package type</Label><Input placeholder="Box, envelope…" value={f.package_type} onChange={(e) => setF({ ...f, package_type: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Courier</Label><Input value={f.courier_name} onChange={(e) => setF({ ...f, courier_name: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Sender phone</Label><Input value={f.sender_phone} onChange={(e) => setF({ ...f, sender_phone: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Recipient phone</Label><Input value={f.recipient_phone} onChange={(e) => setF({ ...f, recipient_phone: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Current lat</Label><Input type="number" step="0.000001" value={f.current_lat} onChange={(e) => setF({ ...f, current_lat: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Current lng</Label><Input type="number" step="0.000001" value={f.current_lng} onChange={(e) => setF({ ...f, current_lng: e.target.value })} className="mt-1.5" /></div>
+          <div className="sm:col-span-2"><Label>Package description</Label><Textarea value={f.package_description} onChange={(e) => setF({ ...f, package_description: e.target.value })} className="mt-1.5" /></div>
+          <div className="sm:col-span-2"><Label>Admin comments (shown on tracking page)</Label><Textarea value={f.admin_comments} onChange={(e) => setF({ ...f, admin_comments: e.target.value })} className="mt-1.5" /></div>
         </div>
         <div className="mt-6">
           <Label>Parcel image</Label>
@@ -326,6 +345,7 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
     </div>
   );
 }
+
 
 function ImageUploader({ shipmentId, value, onChange }: { shipmentId: string; value: string; onChange: (url: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
