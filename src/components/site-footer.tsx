@@ -49,7 +49,7 @@ export function SiteFooter() {
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li><Link to="/track" className="hover:text-foreground">Track a shipment</Link></li>
               <li><Link to="/calculator" className="hover:text-foreground">Rate calculator</Link></li>
-              <li><Link to="/login" className="hover:text-foreground">Business account</Link></li>
+              <li><Link to="/auth" className="hover:text-foreground">Business account</Link></li>
             </ul>
           </div>
         </div>
