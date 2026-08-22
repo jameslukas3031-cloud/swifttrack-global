@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          entity: string | null
+          entity_id: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      clearance_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          method_id: string | null
+          method_label: string
+          note: string | null
+          payer_email: string | null
+          payer_name: string | null
+          proof_url: string | null
+          reference: string | null
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shipment_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          method_id?: string | null
+          method_label: string
+          note?: string | null
+          payer_email?: string | null
+          payer_name?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shipment_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          method_id?: string | null
+          method_label?: string
+          note?: string | null
+          payer_email?: string | null
+          payer_name?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shipment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clearance_payments_method_id_fkey"
+            columns: ["method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clearance_payments_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_messages: {
         Row: {
           created_at: string
@@ -139,6 +241,42 @@ export type Database = {
           },
         ]
       }
+      payment_methods: {
+        Row: {
+          account_details: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          instructions: string | null
+          kind: string
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          account_details?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          instructions?: string | null
+          kind: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          account_details?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          instructions?: string | null
+          kind?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean
@@ -216,6 +354,11 @@ export type Database = {
           admin_comments: string | null
           admin_signature_url: string | null
           amount_paid: number | null
+          clearance_fee: number
+          clearance_instructions: string | null
+          clearance_paid: number
+          clearance_required: boolean
+          clearance_status: string
           cost: number | null
           courier_name: string | null
           created_at: string
@@ -258,6 +401,11 @@ export type Database = {
           admin_comments?: string | null
           admin_signature_url?: string | null
           amount_paid?: number | null
+          clearance_fee?: number
+          clearance_instructions?: string | null
+          clearance_paid?: number
+          clearance_required?: boolean
+          clearance_status?: string
           cost?: number | null
           courier_name?: string | null
           created_at?: string
@@ -300,6 +448,11 @@ export type Database = {
           admin_comments?: string | null
           admin_signature_url?: string | null
           amount_paid?: number | null
+          clearance_fee?: number
+          clearance_instructions?: string | null
+          clearance_paid?: number
+          clearance_required?: boolean
+          clearance_status?: string
           cost?: number | null
           courier_name?: string | null
           created_at?: string
@@ -412,6 +565,33 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      review_clearance_payment: {
+        Args: { _approve: boolean; _note?: string; _payment_id: string }
+        Returns: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          method_id: string | null
+          method_label: string
+          note: string | null
+          payer_email: string | null
+          payer_name: string | null
+          proof_url: string | null
+          reference: string | null
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shipment_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clearance_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "staff" | "customer" | "super_admin" | "user"
