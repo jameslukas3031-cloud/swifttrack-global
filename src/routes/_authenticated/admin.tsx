@@ -768,3 +768,218 @@ function ProfileView() {
     </div>
   );
 }
+
+type ClearancePayment = {
+  id: string; shipment_id: string; method_label: string; amount: number; currency: string;
+  reference: string | null; payer_name: string | null; payer_email: string | null;
+  proof_url: string | null; note: string | null; review_status: string; review_note: string | null;
+  reviewed_at: string | null; created_at: string;
+};
+type PaymentMethodRow = {
+  id: string; kind: string; label: string; instructions: string | null;
+  account_details: string | null; enabled: boolean; sort_order: number;
+};
+
+const CLEARANCE_STATUSES = ["not_required","clearance_required","payment_pending","partially_paid","payment_rejected","cleared"];
+
+function ClearanceView({ shipments, reload }: { shipments: Shipment[]; reload: () => void }) {
+  const [payments, setPayments] = useState<ClearancePayment[]>([]);
+  const [methods, setMethods] = useState<PaymentMethodRow[]>([]);
+  const [tab, setTab] = useState<"review" | "fees" | "methods">("review");
+
+  async function load() {
+    const [p, m] = await Promise.all([
+      supabase.from("clearance_payments").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("payment_methods").select("*").order("sort_order"),
+    ]);
+    setPayments((p.data ?? []) as ClearancePayment[]);
+    setMethods((m.data ?? []) as PaymentMethodRow[]);
+  }
+  useEffect(() => { load(); }, []);
+
+  const byId = Object.fromEntries(shipments.map((s) => [s.id, s]));
+
+  async function review(id: string, approve: boolean) {
+    const note = approve ? null : window.prompt("Reason for rejection (optional)") ?? null;
+    const { error } = await supabase.rpc("review_clearance_payment", { _payment_id: id, _approve: approve, _note: note });
+    if (error) return toast.error(error.message);
+    toast.success(approve ? "Payment approved" : "Payment rejected");
+    load(); reload();
+  }
+
+  async function openProof(path: string) {
+    const { data, error } = await supabase.storage.from("payment-proofs").createSignedUrl(path, 300);
+    if (error || !data) return toast.error("Could not open proof");
+    window.open(data.signedUrl, "_blank", "noopener");
+  }
+
+  return (
+    <div>
+      <h1 className="font-display text-2xl font-bold">Customs clearance</h1>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {(["review","fees","methods"] as const).map((t) => (
+          <Button key={t} size="sm" variant={tab === t ? "default" : "outline"} onClick={() => setTab(t)} className="capitalize">
+            {t === "review" ? "Payment review" : t === "fees" ? "Clearance fees" : "Payment methods"}
+          </Button>
+        ))}
+      </div>
+
+      {tab === "review" && (
+        <Card className="mt-6 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr><th className="px-4 py-3">Tracking</th><th className="px-4 py-3">Method</th><th className="px-4 py-3">Amount</th>
+                <th className="px-4 py-3">Reference</th><th className="px-4 py-3">Payer</th><th className="px-4 py-3">Proof</th>
+                <th className="px-4 py-3">State</th><th className="px-4 py-3">Action</th></tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-t border-border align-top">
+                    <td className="px-4 py-3 font-mono text-xs">{byId[p.shipment_id]?.tracking_number ?? "—"}</td>
+                    <td className="px-4 py-3">{p.method_label}</td>
+                    <td className="px-4 py-3">${Number(p.amount).toFixed(2)}</td>
+                    <td className="px-4 py-3 max-w-[180px] break-all font-mono text-xs">{p.reference ?? "—"}</td>
+                    <td className="px-4 py-3">{p.payer_name ?? "—"}<div className="text-xs text-muted-foreground">{p.payer_email ?? ""}</div></td>
+                    <td className="px-4 py-3">{p.proof_url ? <Button size="sm" variant="ghost" onClick={() => openProof(p.proof_url!)}>View</Button> : "—"}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={p.review_status === "approved" ? "default" : "outline"}>{p.review_status}</Badge>
+                      {p.review_note && <div className="mt-1 text-xs text-muted-foreground">{p.review_note}</div>}
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.review_status === "pending" ? (
+                        <div className="flex gap-1">
+                          <Button size="sm" onClick={() => review(p.id, true)}>Approve</Button>
+                          <Button size="sm" variant="outline" onClick={() => review(p.id, false)}>Reject</Button>
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">{p.reviewed_at ? format(new Date(p.reviewed_at), "MMM d, HH:mm") : ""}</span>}
+                    </td>
+                  </tr>
+                ))}
+                {payments.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No clearance payments submitted.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {tab === "fees" && <ClearanceFees shipments={shipments} reload={reload} />}
+
+      {tab === "methods" && <PaymentMethodsEditor methods={methods} reload={load} />}
+    </div>
+  );
+}
+
+function ClearanceFees({ shipments, reload }: { shipments: Shipment[]; reload: () => void }) {
+  const [id, setId] = useState("");
+  const s = shipments.find((x) => x.id === id);
+  const [f, setF] = useState({ required: false, fee: "0", status: "clearance_required", instructions: "" });
+
+  useEffect(() => {
+    if (!s) return;
+    setF({
+      required: !!s.clearance_required,
+      fee: String(s.clearance_fee ?? 0),
+      status: s.clearance_status ?? "clearance_required",
+      instructions: s.clearance_instructions ?? "",
+    });
+  }, [id]);
+
+  async function save() {
+    if (!s) return;
+    const { error } = await supabase.from("shipments").update({
+      clearance_required: f.required,
+      clearance_fee: Number(f.fee) || 0,
+      clearance_status: f.required ? f.status : "not_required",
+      clearance_instructions: f.instructions || null,
+    }).eq("id", s.id);
+    if (error) return toast.error(error.message);
+    const { data: u } = await supabase.auth.getUser();
+    if (u.user) {
+      await supabase.from("admin_audit_logs").insert({
+        actor_id: u.user.id, action: "update_clearance_fee", entity: "shipments", entity_id: s.id,
+        details: { fee: Number(f.fee) || 0, required: f.required, status: f.status },
+      });
+    }
+    toast.success("Clearance settings saved");
+    reload();
+  }
+
+  return (
+    <Card className="mt-6 p-6">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Label>Shipment</Label>
+          <Select value={id} onValueChange={setId}>
+            <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select a shipment" /></SelectTrigger>
+            <SelectContent>{shipments.map((x) => <SelectItem key={x.id} value={x.id}>{x.tracking_number} · {x.recipient_name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        {s && (
+          <>
+            <div>
+              <Label>Clearance required</Label>
+              <Select value={f.required ? "yes" : "no"} onValueChange={(v) => setF({ ...f, required: v === "yes" })}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="no">No</SelectItem><SelectItem value="yes">Yes</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div><Label>Clearance fee ($)</Label><Input type="number" step="0.01" value={f.fee} onChange={(e) => setF({ ...f, fee: e.target.value })} className="mt-1.5" /></div>
+            <div>
+              <Label>Clearance status</Label>
+              <Select value={f.status} onValueChange={(v) => setF({ ...f, status: v })}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>{CLEARANCE_STATUSES.map((x) => <SelectItem key={x} value={x}>{x.replace(/_/g, " ")}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Amount approved</Label><Input readOnly value={`$${Number(s.clearance_paid ?? 0).toFixed(2)}`} className="mt-1.5" /></div>
+            <div className="sm:col-span-2"><Label>Instructions shown to customer</Label><Textarea rows={3} value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} className="mt-1.5" /></div>
+            <div className="sm:col-span-2"><Button onClick={save} className="gradient-brand text-white">Save clearance settings</Button></div>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function PaymentMethodsEditor({ methods, reload }: { methods: PaymentMethodRow[]; reload: () => void }) {
+  const [draft, setDraft] = useState<Record<string, Partial<PaymentMethodRow>>>({});
+  async function save(m: PaymentMethodRow) {
+    const d = draft[m.id] ?? {};
+    const { error } = await supabase.from("payment_methods").update({
+      label: d.label ?? m.label,
+      instructions: (d.instructions ?? m.instructions) || null,
+      account_details: (d.account_details ?? m.account_details) || null,
+      enabled: d.enabled ?? m.enabled,
+    }).eq("id", m.id);
+    if (error) return toast.error(error.message);
+    toast.success("Method saved"); reload();
+  }
+  return (
+    <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      {methods.map((m) => {
+        const d = draft[m.id] ?? {};
+        const set = (patch: Partial<PaymentMethodRow>) => setDraft({ ...draft, [m.id]: { ...d, ...patch } });
+        const enabled = d.enabled ?? m.enabled;
+        return (
+          <Card key={m.id} className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="font-display font-semibold">{d.label ?? m.label}</div>
+              <Select value={enabled ? "on" : "off"} onValueChange={(v) => set({ enabled: v === "on" })}>
+                <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="on">Enabled</SelectItem><SelectItem value="off">Disabled</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div className="mt-3 space-y-3">
+              <div><Label>Display label</Label><Input value={d.label ?? m.label} onChange={(e) => set({ label: e.target.value })} className="mt-1.5" /></div>
+              <div><Label>Account / wallet details</Label><Input placeholder="Wallet address, PayPal email, IBAN…" value={d.account_details ?? m.account_details ?? ""} onChange={(e) => set({ account_details: e.target.value })} className="mt-1.5" /></div>
+              <div><Label>Instructions</Label><Textarea rows={2} value={d.instructions ?? m.instructions ?? ""} onChange={(e) => set({ instructions: e.target.value })} className="mt-1.5" /></div>
+              <Button size="sm" onClick={() => save(m)}>Save</Button>
+            </div>
+          </Card>
+        );
+      })}
+      {methods.length === 0 && <p className="text-sm text-muted-foreground">No payment methods configured.</p>}
+    </div>
+  );
+}
