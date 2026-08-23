@@ -183,6 +183,8 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
           </div>
         </div>
 
+        <ClearanceCard shipment={shipment} />
+
 
         {shipment.parcel_image_url && (
           <div className="rounded-2xl border border-border bg-card p-6">
