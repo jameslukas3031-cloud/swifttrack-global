@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, PlusSquare, Route as RouteIcon, Users, CreditCard, Receipt, BarChart3, Bell, Settings, User, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Package, PlusSquare, Route as RouteIcon, Users, CreditCard, Receipt, BarChart3, Bell, Settings, User, LogOut, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -8,7 +8,7 @@ import {
 
 export type AdminSection =
   | "dashboard" | "shipments" | "create" | "tracking" | "customers"
-  | "payments" | "receipts" | "reports" | "notifications" | "settings" | "profile";
+  | "payments" | "clearance" | "receipts" | "reports" | "notifications" | "settings" | "profile";
 
 const items: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -17,12 +17,14 @@ const items: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[]
   { id: "tracking", label: "Tracking Updates", icon: RouteIcon },
   { id: "customers", label: "Customers", icon: Users },
   { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "clearance", label: "Customs Clearance", icon: ShieldAlert },
   { id: "receipts", label: "Receipts", icon: Receipt },
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "settings", label: "Settings", icon: Settings },
   { id: "profile", label: "Profile", icon: User },
 ];
+
 
 export function AdminSidebar({ active, onSelect }: { active: AdminSection; onSelect: (s: AdminSection) => void }) {
   return (
