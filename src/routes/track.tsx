@@ -262,6 +262,59 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
   );
 }
 
+const CLEARANCE_LABELS: Record<string, string> = {
+  not_required: "Not required",
+  clearance_required: "Clearance fee due",
+  payment_pending: "Payment under review",
+  partially_paid: "Partially paid",
+  payment_rejected: "Payment rejected",
+  cleared: "Cleared",
+};
+
+function ClearanceCard({ shipment }: { shipment: DbShipment }) {
+  const [open, setOpen] = useState(false);
+  if (!shipment.clearance_required) return null;
+  const fee = Number(shipment.clearance_fee ?? 0);
+  const paid = Number(shipment.clearance_paid ?? 0);
+  const due = Math.max(fee - paid, 0);
+  const status = shipment.clearance_status ?? "clearance_required";
+  const cleared = status === "cleared" || due <= 0;
+
+  return (
+    <div className="rounded-2xl border border-accent/40 bg-accent/5 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent"><ShieldAlert className="h-5 w-5" /></span>
+          <div>
+            <h3 className="font-display text-lg font-semibold">Customs clearance</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Fee ${fee.toFixed(2)} · Paid ${paid.toFixed(2)} · Outstanding ${due.toFixed(2)}
+            </p>
+          </div>
+        </div>
+        <Badge variant={cleared ? "default" : "outline"}>{CLEARANCE_LABELS[status] ?? status.replace(/_/g, " ")}</Badge>
+      </div>
+      {shipment.clearance_instructions && (
+        <p className="mt-4 whitespace-pre-wrap rounded-lg border border-border bg-card p-3 text-sm">{shipment.clearance_instructions}</p>
+      )}
+      {!cleared && (
+        <Button className="mt-4 gradient-brand text-white" onClick={() => setOpen(true)}>
+          <CreditCard className="mr-2 h-4 w-4" /> Pay customs clearance
+        </Button>
+      )}
+      {open && (
+        <ClearancePaymentDialog
+          shipmentId={shipment.id}
+          trackingNumber={shipment.tracking_number}
+          amountDue={due}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+
 function Info({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border p-4">
