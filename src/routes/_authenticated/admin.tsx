@@ -800,7 +800,7 @@ function ClearanceView({ shipments, reload }: { shipments: Shipment[]; reload: (
   const byId = Object.fromEntries(shipments.map((s) => [s.id, s]));
 
   async function review(id: string, approve: boolean) {
-    const note = approve ? null : window.prompt("Reason for rejection (optional)") ?? null;
+    const note = approve ? undefined : window.prompt("Reason for rejection (optional)") ?? undefined;
     const { error } = await supabase.rpc("review_clearance_payment", { _payment_id: id, _approve: approve, _note: note });
     if (error) return toast.error(error.message);
     toast.success(approve ? "Payment approved" : "Payment rejected");
