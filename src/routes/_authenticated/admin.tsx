@@ -152,6 +152,8 @@ function AdminPage() {
 
             {section === "payments" && <PaymentsView shipments={shipments} reload={loadAll} />}
 
+            {section === "clearance" && <ClearanceView shipments={shipments} reload={loadAll} />}
+
             {section === "receipts" && <ReceiptsView shipments={shipments} />}
 
             {section === "reports" && (
