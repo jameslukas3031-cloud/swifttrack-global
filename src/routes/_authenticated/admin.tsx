@@ -31,6 +31,8 @@ type Shipment = {
   courier_name: string | null; estimated_delivery: string | null;
   current_lat: number | null; current_lng: number | null;
   admin_comments?: string | null;
+  clearance_required?: boolean | null; clearance_fee?: number | null; clearance_paid?: number | null;
+  clearance_status?: string | null; clearance_instructions?: string | null;
   created_at: string; user_id: string | null;
 };
 type Profile = { id: string; email: string | null; full_name: string | null; created_at: string };
