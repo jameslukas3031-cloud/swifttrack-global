@@ -32,6 +32,8 @@ type DbShipment = {
   shipping_method: string | null; courier_name: string | null;
   estimated_delivery: string | null; created_at: string; updated_at: string;
   admin_comments: string | null;
+  clearance_required: boolean | null; clearance_fee: number | null; clearance_paid: number | null;
+  clearance_status: string | null; clearance_instructions: string | null;
   origin_lat: number | null; origin_lng: number | null;
   destination_lat: number | null; destination_lng: number | null;
   current_lat: number | null; current_lng: number | null;
