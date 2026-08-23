@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Printer, MapPin, Package, User, Truck, CheckCircle2, Clock, AlertCircle, CreditCard, Camera } from "lucide-react";
+import { Printer, MapPin, Package, User, Truck, CheckCircle2, Clock, AlertCircle, CreditCard, Camera, ShieldAlert } from "lucide-react";
 import { TrackSearch } from "@/components/track-search";
 import { TrackingMap } from "@/components/tracking-map";
+import { ClearancePaymentDialog } from "@/components/clearance-payment-dialog";
 import { findShipment, demoTrackingNumbers, type Shipment as MockShipment } from "@/lib/mock-shipments";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,8 @@ type DbShipment = {
   shipping_method: string | null; courier_name: string | null;
   estimated_delivery: string | null; created_at: string; updated_at: string;
   admin_comments: string | null;
+  clearance_required: boolean | null; clearance_fee: number | null; clearance_paid: number | null;
+  clearance_status: string | null; clearance_instructions: string | null;
   origin_lat: number | null; origin_lng: number | null;
   destination_lat: number | null; destination_lng: number | null;
   current_lat: number | null; current_lng: number | null;
@@ -181,6 +184,8 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
           </div>
         </div>
 
+        <ClearanceCard shipment={shipment} />
+
 
         {shipment.parcel_image_url && (
           <div className="rounded-2xl border border-border bg-card p-6">
@@ -256,6 +261,59 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
     </div>
   );
 }
+
+const CLEARANCE_LABELS: Record<string, string> = {
+  not_required: "Not required",
+  clearance_required: "Clearance fee due",
+  payment_pending: "Payment under review",
+  partially_paid: "Partially paid",
+  payment_rejected: "Payment rejected",
+  cleared: "Cleared",
+};
+
+function ClearanceCard({ shipment }: { shipment: DbShipment }) {
+  const [open, setOpen] = useState(false);
+  if (!shipment.clearance_required) return null;
+  const fee = Number(shipment.clearance_fee ?? 0);
+  const paid = Number(shipment.clearance_paid ?? 0);
+  const due = Math.max(fee - paid, 0);
+  const status = shipment.clearance_status ?? "clearance_required";
+  const cleared = status === "cleared" || due <= 0;
+
+  return (
+    <div className="rounded-2xl border border-accent/40 bg-accent/5 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent"><ShieldAlert className="h-5 w-5" /></span>
+          <div>
+            <h3 className="font-display text-lg font-semibold">Customs clearance</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Fee ${fee.toFixed(2)} · Paid ${paid.toFixed(2)} · Outstanding ${due.toFixed(2)}
+            </p>
+          </div>
+        </div>
+        <Badge variant={cleared ? "default" : "outline"}>{CLEARANCE_LABELS[status] ?? status.replace(/_/g, " ")}</Badge>
+      </div>
+      {shipment.clearance_instructions && (
+        <p className="mt-4 whitespace-pre-wrap rounded-lg border border-border bg-card p-3 text-sm">{shipment.clearance_instructions}</p>
+      )}
+      {!cleared && (
+        <Button className="mt-4 gradient-brand text-white" onClick={() => setOpen(true)}>
+          <CreditCard className="mr-2 h-4 w-4" /> Pay customs clearance
+        </Button>
+      )}
+      {open && (
+        <ClearancePaymentDialog
+          shipmentId={shipment.id}
+          trackingNumber={shipment.tracking_number}
+          amountDue={due}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 
 function Info({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
   return (
