@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Camera, Upload, Trash2, Search, Package, Users, CreditCard, TrendingUp, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
