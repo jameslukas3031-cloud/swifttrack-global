@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NITRO_PRESET = "netlify"
+
+# Deep links / refresh: the build emits `dist/_redirects` with a catch-all rule
+# ("/*" -> server handler, 200) plus a `preferStatic` server function, so every
+# route resolves on reload. Static files in `dist` are served directly.
