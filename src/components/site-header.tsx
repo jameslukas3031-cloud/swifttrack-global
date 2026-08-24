@@ -12,6 +12,7 @@ const nav = [
   { to: "/calculator", label: "Rates" },
   { to: "/about", label: "About" },
   { to: "/contact", label: "Contact" },
+  { to: "/support", label: "Support" },
 ];
 
 export function SiteHeader() {
