@@ -738,16 +738,72 @@ function NotificationsView({ shipments }: { shipments: Shipment[] }) {
   );
 }
 
+type SupportRow = { id: string; channel: string; enabled: boolean; value: string; label: string | null; sort_order: number };
+
+const SUPPORT_META: Record<string, { title: string; hint: string }> = {
+  email: { title: "Email support", hint: "support@yourcompany.com" },
+  whatsapp: { title: "WhatsApp support", hint: "+1234567890 or wa.me link" },
+  telegram: { title: "Telegram support", hint: "@yourhandle or t.me link" },
+};
+
 function SettingsView() {
+  const [rows, setRows] = useState<SupportRow[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.from("support_settings").select("*").order("sort_order").then(({ data }) => setRows((data ?? []) as SupportRow[]));
+  }, []);
+
+  function patch(id: string, p: Partial<SupportRow>) {
+    setRows((r) => r.map((x) => (x.id === id ? { ...x, ...p } : x)));
+  }
+
+  async function save() {
+    setSaving(true);
+    for (const r of rows) {
+      const { error } = await supabase.from("support_settings")
+        .update({ enabled: r.enabled, value: r.value.trim() })
+        .eq("id", r.id);
+      if (error) { toast.error(error.message); setSaving(false); return; }
+    }
+    setSaving(false);
+    toast.success("Support settings saved");
+  }
+
   return (
     <div>
       <h1 className="font-display text-2xl font-bold">Settings</h1>
-      <Card className="mt-6 p-6 text-sm text-muted-foreground">
-        Configure branding, notification preferences, and billing details. Reach out to support to customize enterprise settings.
+      <Card className="mt-6 p-6">
+        <h2 className="font-display font-semibold">Support channels</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Enable the channels visitors can use and set the contact details.</p>
+        <div className="mt-5 space-y-5">
+          {rows.map((r) => {
+            const meta = SUPPORT_META[r.channel] ?? { title: r.channel, hint: "" };
+            return (
+              <div key={r.id} className="rounded-lg border border-border p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor={`sw-${r.id}`} className="font-medium">{meta.title}</Label>
+                  <Switch id={`sw-${r.id}`} checked={r.enabled} onCheckedChange={(v) => patch(r.id, { enabled: v })} />
+                </div>
+                <Input
+                  className="mt-3"
+                  placeholder={meta.hint}
+                  value={r.value ?? ""}
+                  onChange={(e) => patch(r.id, { value: e.target.value })}
+                />
+              </div>
+            );
+          })}
+          {rows.length === 0 && <div className="text-sm text-muted-foreground">Loading…</div>}
+        </div>
+        <Button onClick={save} disabled={saving || rows.length === 0} className="mt-6 gradient-brand text-white">
+          {saving ? "Saving…" : "Save settings"}
+        </Button>
       </Card>
     </div>
   );
 }
+
 
 function ProfileView() {
   const [profile, setProfile] = useState<{ email: string | null; full_name: string | null } | null>(null);
