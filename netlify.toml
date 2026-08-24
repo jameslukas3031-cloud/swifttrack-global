@@ -1,14 +1,11 @@
 [build]
   command = "npm run build"
-  publish = "dist/client"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
   NITRO_PRESET = "netlify"
 
-# SSR/deep-link fallback: every route that isn't a static asset is handled by the
-# server handler, so refreshing or opening any URL directly works.
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/server"
-  status = 200
+# Deep links / refresh: the build emits `dist/_redirects` with a catch-all rule
+# ("/*" -> server handler, 200) plus a `preferStatic` server function, so every
+# route resolves on reload. Static files in `dist` are served directly.
