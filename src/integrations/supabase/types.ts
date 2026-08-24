@@ -493,6 +493,39 @@ export type Database = {
         }
         Relationships: []
       }
+      support_settings: {
+        Row: {
+          channel: string
+          created_at: string
+          enabled: boolean
+          id: string
+          label: string | null
+          sort_order: number
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          sort_order?: number
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          sort_order?: number
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       tracking_events: {
         Row: {
           created_at: string
