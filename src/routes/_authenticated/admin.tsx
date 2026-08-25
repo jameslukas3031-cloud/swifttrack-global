@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { useParcelImage } from "@/lib/parcel-image";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar, type AdminSection } from "@/components/admin-sidebar";
 import { Button } from "@/components/ui/button";
@@ -333,8 +334,8 @@ function EditShipmentDialog({ shipment, onClose, onSaved }: { shipment: Shipment
           <div><Label>Courier</Label><Input value={f.courier_name} onChange={(e) => setF({ ...f, courier_name: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Sender phone</Label><Input value={f.sender_phone} onChange={(e) => setF({ ...f, sender_phone: e.target.value })} className="mt-1.5" /></div>
           <div><Label>Recipient phone</Label><Input value={f.recipient_phone} onChange={(e) => setF({ ...f, recipient_phone: e.target.value })} className="mt-1.5" /></div>
-          <div><Label>Current lat</Label><Input type="number" step="0.000001" value={f.current_lat} onChange={(e) => setF({ ...f, current_lat: e.target.value })} className="mt-1.5" /></div>
-          <div><Label>Current lng</Label><Input type="number" step="0.000001" value={f.current_lng} onChange={(e) => setF({ ...f, current_lng: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Parcel location latitude</Label><Input type="number" step="0.000001" value={f.current_lat} onChange={(e) => setF({ ...f, current_lat: e.target.value })} className="mt-1.5" /></div>
+          <div><Label>Parcel location longitude</Label><Input type="number" step="0.000001" value={f.current_lng} onChange={(e) => setF({ ...f, current_lng: e.target.value })} className="mt-1.5" /></div>
           <div className="sm:col-span-2"><Label>Package description</Label><Textarea value={f.package_description} onChange={(e) => setF({ ...f, package_description: e.target.value })} className="mt-1.5" /></div>
           <div className="sm:col-span-2"><Label>Admin comments (shown on tracking page)</Label><Textarea value={f.admin_comments} onChange={(e) => setF({ ...f, admin_comments: e.target.value })} className="mt-1.5" /></div>
         </div>
@@ -356,6 +357,7 @@ function ImageUploader({ shipmentId, value, onChange }: { shipmentId: string; va
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { url: previewUrl } = useParcelImage(value);
 
   async function upload(file: File) {
     setUploading(true);
@@ -363,17 +365,16 @@ function ImageUploader({ shipmentId, value, onChange }: { shipmentId: string; va
     const path = `${shipmentId}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("parcel-images").upload(path, file, { upsert: true, contentType: file.type });
     if (error) { toast.error(error.message); setUploading(false); return; }
-    const { data } = supabase.storage.from("parcel-images").getPublicUrl(path);
-    onChange(data.publicUrl);
+    onChange(path);
     setUploading(false);
     toast.success("Image uploaded");
   }
 
   return (
     <div className="mt-2 space-y-3">
-      {value && (
+      {value && previewUrl && (
         <div className="relative">
-          <img src={value} alt="Parcel" className="max-h-64 rounded-lg border border-border object-contain" />
+          <img src={previewUrl} alt="Parcel" className="max-h-64 rounded-lg border border-border object-contain" />
           <Button size="sm" variant="destructive" className="absolute right-2 top-2" onClick={() => onChange("")}>Remove</Button>
         </div>
       )}
@@ -432,8 +433,7 @@ function CreateShipment({ onDone }: { onDone: () => void }) {
       const path = `${inserted.id}/${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("parcel-images").upload(path, pendingImage, { contentType: pendingImage.type });
       if (!upErr) {
-        const { data: pub } = supabase.storage.from("parcel-images").getPublicUrl(path);
-        await supabase.from("shipments").update({ parcel_image_url: pub.publicUrl }).eq("id", inserted.id);
+        await supabase.from("shipments").update({ parcel_image_url: path }).eq("id", inserted.id);
       }
     }
     await supabase.from("tracking_events").insert({ shipment_id: inserted.id, status: "created" as never, description: "Shipment created", location: [f.sender_city, f.sender_country].filter(Boolean).join(", ") || null });
