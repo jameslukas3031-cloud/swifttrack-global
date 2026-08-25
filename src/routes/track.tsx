@@ -187,12 +187,21 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
         <ClearanceCard shipment={shipment} />
 
 
-        {shipment.parcel_image_url && (
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><Camera className="h-4 w-4" /> Parcel photo</div>
-            <img src={shipment.parcel_image_url} alt="Parcel" className="mt-3 max-h-96 w-full rounded-lg border border-border object-contain" />
-          </div>
-        )}
+        <ParcelPhoto value={shipment.parcel_image_url} />
+
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><MapPin className="h-4 w-4" /> Parcel location</div>
+          {shipment.current_lat != null && shipment.current_lng != null ? (
+            <>
+              <div className="mt-1 mb-3 text-sm font-semibold">{currentLocation || "—"}</div>
+              <ParcelLocationMap lat={Number(shipment.current_lat)} lng={Number(shipment.current_lng)} label={currentLocation} />
+            </>
+          ) : (
+            <div className="mt-3 grid h-[180px] place-items-center rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+              Location currently unavailable
+            </div>
+          )}
+        </div>
 
         {hasMap && (
           <TrackingMap shipment={{
