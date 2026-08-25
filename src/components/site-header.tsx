@@ -95,6 +95,26 @@ export function SiteHeader() {
                 {n.label}
               </Link>
             ))}
+            {user && (
+              <>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
+                >
+                  Dashboard
+                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    className="rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
+                  >
+                    Admin
+                  </Link>
+                )}
+              </>
+            )}
             <div className="mt-2 grid grid-cols-2 gap-2">
               {user ? (
                 <Button variant="outline" size="sm" onClick={() => { signOut(); setOpen(false); }}>Sign out</Button>
