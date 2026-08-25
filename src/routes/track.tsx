@@ -5,7 +5,9 @@ import { format } from "date-fns";
 import { Printer, MapPin, Package, User, Truck, CheckCircle2, Clock, AlertCircle, CreditCard, Camera, ShieldAlert } from "lucide-react";
 import { TrackSearch } from "@/components/track-search";
 import { TrackingMap } from "@/components/tracking-map";
+import { ParcelLocationMap } from "@/components/parcel-location-map";
 import { ClearancePaymentDialog } from "@/components/clearance-payment-dialog";
+import { useParcelImage } from "@/lib/parcel-image";
 import { findShipment, demoTrackingNumbers, type Shipment as MockShipment } from "@/lib/mock-shipments";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -323,6 +325,24 @@ function ClearanceCard({ shipment }: { shipment: DbShipment }) {
   );
 }
 
+
+function ParcelPhoto({ value }: { value: string | null }) {
+  const { url, loading } = useParcelImage(value);
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><Camera className="h-4 w-4" /> Parcel photo</div>
+      {loading ? (
+        <div className="mt-3 h-48 animate-pulse rounded-lg bg-muted" />
+      ) : url ? (
+        <img src={url} alt="Parcel" className="mt-3 max-h-96 w-full rounded-lg border border-border object-contain" />
+      ) : (
+        <div className="mt-3 grid h-40 place-items-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+          No parcel photo available
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Info({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
   return (
