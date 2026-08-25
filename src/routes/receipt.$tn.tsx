@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { useParcelImage } from "@/lib/parcel-image";
 import { Button } from "@/components/ui/button";
 import { Printer, Download, FileText, Package } from "lucide-react";
 import QRCode from "qrcode";
@@ -179,12 +180,7 @@ function ReceiptPage() {
           </div>
         )}
 
-        {s.parcel_image_url && (
-          <div className="mt-5">
-            <div className="text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200 pb-1">Parcel photo</div>
-            <img src={s.parcel_image_url} alt="Parcel" crossOrigin="anonymous" className="mt-2 max-h-60 rounded border border-slate-200 object-contain" />
-          </div>
-        )}
+        <ReceiptParcelPhoto value={s.parcel_image_url} />
 
         {/* Signature */}
         <div className="mt-8 grid gap-6 sm:grid-cols-2">
@@ -220,5 +216,16 @@ function Row({ k, v }: { k: string; v: string }) {
       <td className="py-2 text-slate-500 w-1/3">{k}</td>
       <td className="py-2 font-medium capitalize">{v}</td>
     </tr>
+  );
+}
+
+function ReceiptParcelPhoto({ value }: { value: string | null }) {
+  const { url } = useParcelImage(value);
+  if (!url) return null;
+  return (
+    <div className="mt-5">
+      <div className="text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200 pb-1">Parcel photo</div>
+      <img src={url} alt="Parcel" crossOrigin="anonymous" className="mt-2 max-h-60 rounded border border-slate-200 object-contain" />
+    </div>
   );
 }
