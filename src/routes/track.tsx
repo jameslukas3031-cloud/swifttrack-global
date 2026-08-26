@@ -222,13 +222,12 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
         <div className="rounded-2xl border border-border bg-card p-6">
           <h3 className="font-display text-lg font-semibold">Tracking timeline</h3>
           <ol className="relative mt-6 flex flex-col">
-            {[...events].reverse().map((e, i, arr) => {
-              const isLatest = i === 0;
-              const isLast = i === arr.length - 1;
+            <div aria-hidden className="absolute left-4 top-0 bottom-0 w-px -translate-x-1/2 bg-border" />
+            {events.map((e, i, arr) => {
+              const isLatest = i === arr.length - 1;
               return (
-                <li key={e.id} className="relative flex gap-4 pb-8 last:pb-0">
-                  {!isLast && <span aria-hidden className="absolute left-4 top-8 h-full w-px -translate-x-1/2 bg-border" />}
-                  <span className={`relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full ${isLatest ? "gradient-brand" : "bg-secondary"}`}>
+                <li key={e.id} className="relative z-10 flex gap-4 pb-8 last:pb-0">
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${isLatest ? "gradient-brand" : "bg-secondary"}`}>
                     {e.status === "delivered" ? <CheckCircle2 className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} /> : <Truck className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} />}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -242,7 +241,7 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
                 </li>
               );
             })}
-            {events.length === 0 && <li className="text-sm text-muted-foreground">No tracking events yet.</li>}
+            {events.length === 0 && <li className="relative z-10 text-sm text-muted-foreground">No tracking events yet.</li>}
           </ol>
         </div>
       </div>
