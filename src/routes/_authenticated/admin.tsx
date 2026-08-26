@@ -524,6 +524,7 @@ function TrackingUpdates({ shipments, reload }: { shipments: Shipment[]; reload:
   const [status, setStatus] = useState("in_transit");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
   const [events, setEvents] = useState<{ id: string; status: string; location: string | null; description: string | null; event_time: string }[]>([]);
 
   useEffect(() => {
@@ -533,15 +534,51 @@ function TrackingUpdates({ shipments, reload }: { shipments: Shipment[]; reload:
 
   async function add() {
     if (!selected) return toast.error("Pick a shipment");
+    if (!location.trim()) return toast.error("Enter the parcel location");
+    setSaving(true);
+
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    const coordinateMatch = location.trim().match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+
+    if (coordinateMatch) {
+      latitude = Number(coordinateMatch[1]);
+      longitude = Number(coordinateMatch[2]);
+    } else {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(location.trim())}`, {
+          headers: { Accept: "application/json" },
+        });
+        const matches = response.ok ? await response.json() as Array<{ lat: string; lon: string }> : [];
+        if (matches[0]) {
+          latitude = Number(matches[0].lat);
+          longitude = Number(matches[0].lon);
+        }
+      } catch {
+        // The location update is not saved without coordinates because the public map depends on them.
+      }
+    }
+
+    if (latitude == null || longitude == null || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+      setSaving(false);
+      return toast.error("Location not found. Enter a more specific address or latitude, longitude.");
+    }
+
     const s = status as never;
     const { error } = await supabase.from("tracking_events").insert({ shipment_id: selected, status: s, location: location || null, description: description || null });
-    if (error) return toast.error(error.message);
-    await supabase.from("shipments").update({ status: s }).eq("id", selected);
+    if (error) { setSaving(false); return toast.error(error.message); }
+    const { error: shipmentError } = await supabase.from("shipments").update({
+      status: s,
+      current_lat: latitude,
+      current_lng: longitude,
+    }).eq("id", selected);
+    if (shipmentError) { setSaving(false); return toast.error(shipmentError.message); }
     toast.success("Tracking update added");
     setLocation(""); setDescription("");
     const { data } = await supabase.from("tracking_events").select("*").eq("shipment_id", selected).order("event_time", { ascending: false });
     setEvents((data ?? []) as typeof events);
     reload();
+    setSaving(false);
   }
 
   return (
@@ -566,7 +603,7 @@ function TrackingUpdates({ shipments, reload }: { shipments: Shipment[]; reload:
           <div><Label>Location</Label><Input value={location} onChange={(e) => setLocation(e.target.value)} className="mt-1.5" /></div>
           <div><Label>Description</Label><Input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1.5" /></div>
         </div>
-        <Button onClick={add} className="mt-4 gradient-brand text-white">Add update</Button>
+        <Button onClick={add} disabled={saving} className="mt-4 gradient-brand text-white">{saving ? "Saving…" : "Add update"}</Button>
       </Card>
       {selected && (
         <Card className="mt-6 p-6">
