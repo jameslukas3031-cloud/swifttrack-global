@@ -221,18 +221,17 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
 
         <div className="rounded-2xl border border-border bg-card p-6">
           <h3 className="font-display text-lg font-semibold">Tracking timeline</h3>
-          <ol className="mt-6 space-y-6">
-            {[...events].reverse().map((e, i) => {
+          <ol className="relative mt-6 flex flex-col">
+            {[...events].reverse().map((e, i, arr) => {
               const isLatest = i === 0;
+              const isLast = i === arr.length - 1;
               return (
-                <li key={e.id} className="relative flex gap-4 pl-2">
-                  <div className="flex flex-col items-center">
-                    <span className={`grid h-8 w-8 place-items-center rounded-full ${isLatest ? "gradient-brand" : "bg-secondary"}`}>
-                      {e.status === "delivered" ? <CheckCircle2 className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} /> : <Truck className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} />}
-                    </span>
-                    {i < events.length - 1 && <span className="mt-1 w-px flex-1 bg-border" />}
-                  </div>
-                  <div className="flex-1 pb-2">
+                <li key={e.id} className="relative flex gap-4 pb-8 last:pb-0">
+                  {!isLast && <span aria-hidden className="absolute left-4 top-8 h-full w-px -translate-x-1/2 bg-border" />}
+                  <span className={`relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full ${isLatest ? "gradient-brand" : "bg-secondary"}`}>
+                    {e.status === "delivered" ? <CheckCircle2 className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} /> : <Truck className={`h-4 w-4 ${isLatest ? "text-white" : "text-muted-foreground"}`} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                       <div className="font-semibold capitalize">{e.status.replace(/_/g, " ")}</div>
                       <div className="text-xs text-muted-foreground">{format(new Date(e.event_time), "MMM d, yyyy · HH:mm")}</div>
