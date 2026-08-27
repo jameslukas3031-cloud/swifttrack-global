@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Package, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
+import { Package, Facebook, Twitter, Linkedin, Instagram, Phone, Mail, MapPin, Clock } from "lucide-react";
+import { useSiteContact } from "@/lib/site-contact";
 
 export function SiteFooter() {
+  const contact = useSiteContact();
   return (
     <footer className="border-t border-border/60 bg-secondary/40">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
