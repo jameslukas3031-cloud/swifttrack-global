@@ -26,6 +26,9 @@ const offices = [
 
 function ContactPage() {
   const [sending, setSending] = useState(false);
+  const contact = useSiteContact();
+  const phone = contact?.contact_phone?.value || "+65 6812 4000";
+  const email = contact?.contact_email?.value || "hello@meridian.co";
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
