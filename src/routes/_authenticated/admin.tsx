@@ -782,7 +782,13 @@ const SUPPORT_META: Record<string, { title: string; hint: string }> = {
   email: { title: "Email support", hint: "support@yourcompany.com" },
   whatsapp: { title: "WhatsApp support", hint: "+1234567890 or wa.me link" },
   telegram: { title: "Telegram support", hint: "@yourhandle or t.me link" },
+  contact_phone: { title: "Phone number", hint: "+65 6812 4000" },
+  contact_email: { title: "Contact email", hint: "hello@yourcompany.com" },
+  office_address: { title: "Office address", hint: "1 Raffles Quay, #40-01, Singapore" },
+  office_hours: { title: "Opening hours", hint: "Mon–Sun, 24/7 global support" },
 };
+
+const CONTACT_CHANNELS_ADMIN = ["contact_phone", "contact_email", "office_address", "office_hours"];
 
 function SettingsView() {
   const [rows, setRows] = useState<SupportRow[]>([]);
@@ -808,6 +814,27 @@ function SettingsView() {
     toast.success("Support settings saved");
   }
 
+  function renderRow(r: SupportRow) {
+    const meta = SUPPORT_META[r.channel] ?? { title: r.channel, hint: "" };
+    return (
+      <div key={r.id} className="rounded-lg border border-border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor={`sw-${r.id}`} className="font-medium">{meta.title}</Label>
+          <Switch id={`sw-${r.id}`} checked={r.enabled} onCheckedChange={(v) => patch(r.id, { enabled: v })} />
+        </div>
+        <Input
+          className="mt-3"
+          placeholder={meta.hint}
+          value={r.value ?? ""}
+          onChange={(e) => patch(r.id, { value: e.target.value })}
+        />
+      </div>
+    );
+  }
+
+  const supportRows = rows.filter((r) => !CONTACT_CHANNELS_ADMIN.includes(r.channel));
+  const contactRows = rows.filter((r) => CONTACT_CHANNELS_ADMIN.includes(r.channel));
+
   return (
     <div>
       <h1 className="font-display text-2xl font-bold">Settings</h1>
@@ -815,29 +842,25 @@ function SettingsView() {
         <h2 className="font-display font-semibold">Support channels</h2>
         <p className="mt-1 text-sm text-muted-foreground">Enable the channels visitors can use and set the contact details.</p>
         <div className="mt-5 space-y-5">
-          {rows.map((r) => {
-            const meta = SUPPORT_META[r.channel] ?? { title: r.channel, hint: "" };
-            return (
-              <div key={r.id} className="rounded-lg border border-border p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor={`sw-${r.id}`} className="font-medium">{meta.title}</Label>
-                  <Switch id={`sw-${r.id}`} checked={r.enabled} onCheckedChange={(v) => patch(r.id, { enabled: v })} />
-                </div>
-                <Input
-                  className="mt-3"
-                  placeholder={meta.hint}
-                  value={r.value ?? ""}
-                  onChange={(e) => patch(r.id, { value: e.target.value })}
-                />
-              </div>
-            );
-          })}
+          {supportRows.map(renderRow)}
           {rows.length === 0 && <div className="text-sm text-muted-foreground">Loading…</div>}
         </div>
-        <Button onClick={save} disabled={saving || rows.length === 0} className="mt-6 gradient-brand text-white">
-          {saving ? "Saving…" : "Save settings"}
-        </Button>
       </Card>
+
+      <Card className="mt-6 p-6">
+        <h2 className="font-display font-semibold">Contact information & office address</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Shown on the homepage footer and the contact page. Turn an item off to hide it.</p>
+        <div className="mt-5 space-y-5">
+          {contactRows.map(renderRow)}
+          {rows.length > 0 && contactRows.length === 0 && (
+            <div className="text-sm text-muted-foreground">No contact fields configured.</div>
+          )}
+        </div>
+      </Card>
+
+      <Button onClick={save} disabled={saving || rows.length === 0} className="mt-6 gradient-brand text-white">
+        {saving ? "Saving…" : "Save settings"}
+      </Button>
     </div>
   );
 }

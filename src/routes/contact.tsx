@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useSiteContact } from "@/lib/site-contact";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -26,6 +27,9 @@ const offices = [
 
 function ContactPage() {
   const [sending, setSending] = useState(false);
+  const contact = useSiteContact();
+  const phone = contact?.contact_phone?.value || "+65 6812 4000";
+  const email = contact?.contact_email?.value || "hello@meridian.co";
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,18 +81,18 @@ function ContactPage() {
         <div className="space-y-4 lg:col-span-2">
           <div className="rounded-2xl border border-border bg-card p-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <a href="tel:+6568124000" className="flex items-center gap-3">
+              <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-secondary"><Phone className="h-4 w-4" /></span>
                 <div>
-                  <div className="text-xs text-muted-foreground">Call sales</div>
-                  <div className="font-medium">+65 6812 4000</div>
+                  <div className="text-xs text-muted-foreground">{contact?.contact_phone?.label || "Call sales"}</div>
+                  <div className="font-medium">{phone}</div>
                 </div>
               </a>
-              <a href="mailto:hello@meridian.co" className="flex items-center gap-3">
+              <a href={`mailto:${email}`} className="flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-secondary"><Mail className="h-4 w-4" /></span>
                 <div>
-                  <div className="text-xs text-muted-foreground">Email</div>
-                  <div className="font-medium">hello@meridian.co</div>
+                  <div className="text-xs text-muted-foreground">{contact?.contact_email?.label || "Email"}</div>
+                  <div className="font-medium">{email}</div>
                 </div>
               </a>
               <button type="button" onClick={() => toast.info("Live chat coming online…")} className="flex items-center gap-3 text-left">
@@ -103,6 +107,16 @@ function ContactPage() {
 
           <div className="rounded-2xl border border-border bg-card p-6">
             <h3 className="font-display font-semibold">Offices</h3>
+            {contact?.office_address && (
+              <div className="mt-4 flex gap-3 border-b border-border pb-4">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                <div>
+                  <div className="font-medium">{contact.office_address.label || "Head office"}</div>
+                  <div className="text-sm text-muted-foreground">{contact.office_address.value}</div>
+                  {contact.office_hours && <div className="text-sm text-muted-foreground">{contact.office_hours.value}</div>}
+                </div>
+              </div>
+            )}
             <ul className="mt-4 space-y-4">
               {offices.map((o) => (
                 <li key={o.city} className="flex gap-3 border-b border-border pb-4 last:border-0 last:pb-0">
