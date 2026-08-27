@@ -107,6 +107,16 @@ function ContactPage() {
 
           <div className="rounded-2xl border border-border bg-card p-6">
             <h3 className="font-display font-semibold">Offices</h3>
+            {contact?.office_address && (
+              <div className="mt-4 flex gap-3 border-b border-border pb-4">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                <div>
+                  <div className="font-medium">{contact.office_address.label || "Head office"}</div>
+                  <div className="text-sm text-muted-foreground">{contact.office_address.value}</div>
+                  {contact.office_hours && <div className="text-sm text-muted-foreground">{contact.office_hours.value}</div>}
+                </div>
+              </div>
+            )}
             <ul className="mt-4 space-y-4">
               {offices.map((o) => (
                 <li key={o.city} className="flex gap-3 border-b border-border pb-4 last:border-0 last:pb-0">
