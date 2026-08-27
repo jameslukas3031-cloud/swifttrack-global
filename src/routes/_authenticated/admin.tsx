@@ -627,6 +627,8 @@ function TrackingUpdates({ shipments, reload }: { shipments: Shipment[]; reload:
 }
 
 function CustomersView({ profiles, userRoles, reload }: { profiles: Profile[]; userRoles: Record<string, string>; reload: () => void }) {
+  const removeUser = useServerFn(deleteUserAccount);
+  const [busy, setBusy] = useState<string | null>(null);
   async function setUserRole(userId: string, newRole: "admin" | "user") {
     await supabase.from("user_roles").delete().eq("user_id", userId).in("role", ["admin","staff","user","customer"]);
     const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: newRole });
@@ -634,12 +636,25 @@ function CustomersView({ profiles, userRoles, reload }: { profiles: Profile[]; u
     toast.success("Role updated");
     reload();
   }
+  async function handleDelete(userId: string, email: string | null) {
+    if (!window.confirm(`Permanently delete ${email ?? "this user"}? This cannot be undone.`)) return;
+    setBusy(userId);
+    try {
+      await removeUser({ data: { userId } });
+      toast.success("Account deleted");
+      reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete account");
+    } finally {
+      setBusy(null);
+    }
+  }
   return (
     <div>
       <h1 className="font-display text-2xl font-bold">Customers</h1>
       <Card className="mt-6 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Joined</th><th className="px-4 py-3">Change</th></tr></thead>
+          <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Joined</th><th className="px-4 py-3">Change</th><th className="px-4 py-3">Actions</th></tr></thead>
           <tbody>
             {profiles.map((p) => {
               const r = userRoles[p.id] ?? "user";
@@ -659,6 +674,13 @@ function CustomersView({ profiles, userRoles, reload }: { profiles: Profile[]; u
                       </Select>
                     )}
                   </td>
+                  <td className="px-4 py-3">
+                    {isSuper ? <span className="text-xs text-muted-foreground">—</span> : (
+                      <Button size="sm" variant="destructive" disabled={busy === p.id} onClick={() => handleDelete(p.id, p.email)}>
+                        {busy === p.id ? "Deleting…" : "Delete"}
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -668,6 +690,7 @@ function CustomersView({ profiles, userRoles, reload }: { profiles: Profile[]; u
     </div>
   );
 }
+
 
 function PaymentsView({ shipments, reload }: { shipments: Shipment[]; reload: () => void }) {
   async function setPaid(id: string, s: string) {
