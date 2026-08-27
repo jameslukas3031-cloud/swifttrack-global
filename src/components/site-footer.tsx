@@ -18,6 +18,26 @@ export function SiteFooter() {
             <p className="mt-4 max-w-sm text-sm text-muted-foreground">
               Moving 4.2 million shipments a day across 220 countries. Air, sea, road & rail — one platform.
             </p>
+            {contact && (contact.contact_phone || contact.contact_email || contact.office_address || contact.office_hours) && (
+              <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
+                {contact.office_address && (
+                  <li className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent" /><span>{contact.office_address.value}</span></li>
+                )}
+                {contact.contact_phone && (
+                  <li className="flex gap-2"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    <a className="hover:text-foreground" href={`tel:${contact.contact_phone.value.replace(/[^\d+]/g, "")}`}>{contact.contact_phone.value}</a>
+                  </li>
+                )}
+                {contact.contact_email && (
+                  <li className="flex gap-2"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    <a className="hover:text-foreground" href={`mailto:${contact.contact_email.value}`}>{contact.contact_email.value}</a>
+                  </li>
+                )}
+                {contact.office_hours && (
+                  <li className="flex gap-2"><Clock className="mt-0.5 h-4 w-4 shrink-0 text-accent" /><span>{contact.office_hours.value}</span></li>
+                )}
+              </ul>
+            )}
             <div className="mt-6 flex gap-3">
               {[Facebook, Twitter, Linkedin, Instagram].map((Icon, i) => (
                 <a key={i} href="#" className="grid h-9 w-9 place-items-center rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40">
