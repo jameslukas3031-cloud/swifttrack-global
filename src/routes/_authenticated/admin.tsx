@@ -782,7 +782,13 @@ const SUPPORT_META: Record<string, { title: string; hint: string }> = {
   email: { title: "Email support", hint: "support@yourcompany.com" },
   whatsapp: { title: "WhatsApp support", hint: "+1234567890 or wa.me link" },
   telegram: { title: "Telegram support", hint: "@yourhandle or t.me link" },
+  contact_phone: { title: "Phone number", hint: "+65 6812 4000" },
+  contact_email: { title: "Contact email", hint: "hello@yourcompany.com" },
+  office_address: { title: "Office address", hint: "1 Raffles Quay, #40-01, Singapore" },
+  office_hours: { title: "Opening hours", hint: "Mon–Sun, 24/7 global support" },
 };
+
+const CONTACT_CHANNELS_ADMIN = ["contact_phone", "contact_email", "office_address", "office_hours"];
 
 function SettingsView() {
   const [rows, setRows] = useState<SupportRow[]>([]);
