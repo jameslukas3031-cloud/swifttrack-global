@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 /** Permanently deletes a user account. Super admins only. */
 export const deleteUserAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string }) => {
+  .validator((input: { userId: string }) => {
     if (!input?.userId) throw new Error("userId is required");
     return input;
   })
