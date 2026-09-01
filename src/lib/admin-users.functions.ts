@@ -11,9 +11,12 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: isSuper, error: roleErr } = await supabase.rpc("is_super_admin", { _user_id: userId });
-    if (roleErr) throw new Error(roleErr.message);
-    if (!isSuper) throw new Error("Forbidden");
+    const [{ data: isSuper, error: superRoleErr }, { data: isAdmin, error: adminRoleErr }] = await Promise.all([
+      supabase.rpc("is_super_admin", { _user_id: userId }),
+      supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    ]);
+    if (superRoleErr || adminRoleErr) throw new Error(superRoleErr?.message ?? adminRoleErr?.message ?? "Could not verify role");
+    if (!isSuper && !isAdmin) throw new Error("Forbidden");
     if (data.userId === userId) throw new Error("You cannot delete your own account");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
