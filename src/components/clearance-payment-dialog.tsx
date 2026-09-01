@@ -94,6 +94,7 @@ export function ClearancePaymentDialog({
         ) : (
           <>
             <div className="mt-5">
+              <p className="mb-2 text-sm font-bold">Click on the payment option to view payment details</p>
               <Label>Payment method</Label>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {methods.map((m) => {
