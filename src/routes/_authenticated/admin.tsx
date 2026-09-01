@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -15,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Camera, Upload, Trash2, Search, Package, Users, CreditCard, TrendingUp, MapPin } from "lucide-react";
+import { deleteUserAccount } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
