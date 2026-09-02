@@ -212,8 +212,8 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
             destination: { label: `${shipment.recipient_city ?? ""} ${shipment.recipient_country ?? ""}`.trim(), lat: shipment.destination_lat!, lng: shipment.destination_lng! },
             currentLocation: { label: displayStatus, lat: shipment.current_lat!, lng: shipment.current_lng! },
             progress, estimatedDelivery: "", shippedAt: shipment.created_at,
-            sender: { name: shipment.sender_name, address: shipment.sender_address, city: shipment.sender_city ?? "", country: shipment.sender_country ?? "" },
-            receiver: { name: shipment.recipient_name, address: shipment.recipient_address, city: shipment.recipient_city ?? "", country: shipment.recipient_country ?? "" },
+            sender: { name: shipment.sender_name ?? "Sender", address: shipment.sender_address ?? "Address unavailable", city: shipment.sender_city ?? "", country: shipment.sender_country ?? "" },
+            receiver: { name: shipment.recipient_name ?? "Receiver", address: shipment.recipient_address ?? "Address unavailable", city: shipment.recipient_city ?? "", country: shipment.recipient_country ?? "" },
             package: { type: shipment.package_type ?? "Box", weight: `${shipment.weight_kg ?? 0} kg`, dimensions: shipment.dimensions ?? "—", pieces: 1 },
             events: [],
           }} />
