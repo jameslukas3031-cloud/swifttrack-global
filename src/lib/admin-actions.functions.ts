@@ -13,7 +13,7 @@ export const reviewClearancePayment = createServerFn({ method: "POST" })
       .select("role")
       .eq("user_id", context.userId);
     if (roleError) throw new Error(roleError.message);
-    const allowed = (roles ?? []).some((role) => role.role === "admin" || role.role === "super_admin");
+    const allowed = (roles ?? []).some((role) => role.role === "super_admin");
     if (!allowed) throw new Error("Forbidden");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

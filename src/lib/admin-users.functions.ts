@@ -14,7 +14,7 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
     const { data: actorRoles, error: roleError } = await supabase
       .from("user_roles").select("role").eq("user_id", userId);
     if (roleError) throw new Error(roleError.message);
-    if (!(actorRoles ?? []).some((row) => row.role === "super_admin" || row.role === "admin")) {
+    if (!(actorRoles ?? []).some((row) => row.role === "super_admin")) {
       throw new Error("Forbidden");
     }
     if (data.userId === userId) throw new Error("You cannot delete your own account");
