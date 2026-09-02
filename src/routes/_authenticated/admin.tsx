@@ -63,7 +63,7 @@ function AdminPage() {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return navigate({ to: "/auth" });
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-      const ok = (roles ?? []).some((role) => role.role === "super_admin" || role.role === "admin");
+      const ok = (roles ?? []).some((role) => role.role === "super_admin");
       setAuthorized(ok);
       if (ok) loadAll();
     })();

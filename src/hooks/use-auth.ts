@@ -45,7 +45,7 @@ export function useUserRole(userId?: string) {
   return { role, isSuperAdmin: role === "super_admin", isAdmin: role === "super_admin" || role === "admin", checked };
 }
 
-// Back-compat alias — now super_admin-only for admin console access
+// Admin console visibility is reserved for super administrators.
 export function useIsAdmin(userId?: string) {
   const { isSuperAdmin, checked } = useUserRole(userId);
   return { isAdmin: isSuperAdmin, checked };
