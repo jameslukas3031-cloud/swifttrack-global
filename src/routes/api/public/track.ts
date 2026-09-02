@@ -1,0 +1,44 @@
+import { createFileRoute } from "@tanstack/react-router";
+
+const safeShipmentFields = [
+  "id", "tracking_number", "status", "service_type", "sender_city", "sender_country",
+  "recipient_city", "recipient_country", "shipping_fee", "payment_status", "amount_paid",
+  "parcel_image_url", "weight_kg", "dimensions", "package_type", "shipping_method",
+  "courier_name", "estimated_delivery", "created_at", "updated_at", "clearance_required",
+  "clearance_fee", "clearance_paid", "clearance_status", "clearance_instructions",
+  "origin_lat", "origin_lng", "destination_lat", "destination_lng", "current_lat", "current_lng",
+].join(",");
+
+export const Route = createFileRoute("/api/public/track")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const trackingNumber = new URL(request.url).searchParams.get("tn")?.trim() ?? "";
+        if (!trackingNumber || trackingNumber.length > 100) {
+          return Response.json({ error: "Invalid tracking number" }, { status: 400 });
+        }
+
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: shipment, error } = await supabaseAdmin
+          .from("shipments")
+          .select(safeShipmentFields)
+          .eq("tracking_number", trackingNumber)
+          .maybeSingle();
+
+        if (error) return Response.json({ error: "Tracking lookup failed" }, { status: 500 });
+        if (!shipment) return Response.json({ shipment: null, events: [] });
+
+        const { data: events, error: eventsError } = await supabaseAdmin
+          .from("tracking_events")
+          .select("id,status,location,description,event_time")
+          .eq("shipment_id", shipment.id)
+          .order("event_time", { ascending: true });
+
+        if (eventsError) return Response.json({ error: "Tracking lookup failed" }, { status: 500 });
+        return Response.json({ shipment, events: events ?? [] }, {
+          headers: { "Cache-Control": "private, max-age=30" },
+        });
+      },
+    },
+  },
+});

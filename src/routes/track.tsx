@@ -65,11 +65,11 @@ function TrackPage() {
     if (!tn || mock) return;
     setLoading(true); setNotFound(false); setDb(null); setEvents([]);
     (async () => {
-      const { data } = await supabase.from("shipments").select("*").eq("tracking_number", tn).maybeSingle();
-      if (!data) { setNotFound(true); setLoading(false); return; }
-      setDb(data as DbShipment);
-      const { data: ev } = await supabase.from("tracking_events").select("*").eq("shipment_id", data.id).order("event_time", { ascending: true });
-      setEvents((ev ?? []) as DbEvent[]);
+      const response = await fetch(`/api/public/track?tn=${encodeURIComponent(tn)}`);
+      const payload = response.ok ? await response.json() as { shipment: DbShipment | null; events: DbEvent[] } : null;
+      if (!payload?.shipment) { setNotFound(true); setLoading(false); return; }
+      setDb(payload.shipment);
+      setEvents(payload.events ?? []);
       setLoading(false);
     })();
   }, [tn, mock]);
