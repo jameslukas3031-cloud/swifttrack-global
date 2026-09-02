@@ -28,9 +28,9 @@ export const Route = createFileRoute("/track")({
 
 type DbShipment = {
   id: string; tracking_number: string; status: string; service_type: string;
-  sender_name: string; sender_address: string; sender_city: string | null; sender_country: string | null; sender_phone: string | null;
-  recipient_name: string; recipient_address: string; recipient_city: string | null; recipient_country: string | null; recipient_phone: string | null;
-  shipping_fee: number | null; payment_status: string; amount_paid: number | null; parcel_image_url: string | null;
+  sender_name: string | null; sender_address: string | null; sender_city: string | null; sender_country: string | null; sender_phone: string | null;
+  recipient_name: string | null; recipient_address: string | null; recipient_city: string | null; recipient_country: string | null; recipient_phone: string | null;
+  shipping_fee: number | null; payment_status: string | null; amount_paid: number | null; parcel_image_url: string | null;
   weight_kg: number | null; dimensions: string | null; package_type: string | null; package_description: string | null;
   shipping_method: string | null; courier_name: string | null;
   estimated_delivery: string | null; created_at: string; updated_at: string;
@@ -65,11 +65,11 @@ function TrackPage() {
     if (!tn || mock) return;
     setLoading(true); setNotFound(false); setDb(null); setEvents([]);
     (async () => {
-      const { data } = await supabase.from("shipments").select("*").eq("tracking_number", tn).maybeSingle();
-      if (!data) { setNotFound(true); setLoading(false); return; }
-      setDb(data as DbShipment);
-      const { data: ev } = await supabase.from("tracking_events").select("*").eq("shipment_id", data.id).order("event_time", { ascending: true });
-      setEvents((ev ?? []) as DbEvent[]);
+      const response = await fetch(`/api/public/track?tn=${encodeURIComponent(tn)}`);
+      const payload = response.ok ? await response.json() as { shipment: DbShipment | null; events: DbEvent[] } : null;
+      if (!payload?.shipment) { setNotFound(true); setLoading(false); return; }
+      setDb(payload.shipment);
+      setEvents(payload.events ?? []);
       setLoading(false);
     })();
   }, [tn, mock]);
@@ -212,8 +212,8 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
             destination: { label: `${shipment.recipient_city ?? ""} ${shipment.recipient_country ?? ""}`.trim(), lat: shipment.destination_lat!, lng: shipment.destination_lng! },
             currentLocation: { label: displayStatus, lat: shipment.current_lat!, lng: shipment.current_lng! },
             progress, estimatedDelivery: "", shippedAt: shipment.created_at,
-            sender: { name: shipment.sender_name, address: shipment.sender_address, city: shipment.sender_city ?? "", country: shipment.sender_country ?? "" },
-            receiver: { name: shipment.recipient_name, address: shipment.recipient_address, city: shipment.recipient_city ?? "", country: shipment.recipient_country ?? "" },
+            sender: { name: shipment.sender_name ?? "Sender", address: shipment.sender_address ?? "Address unavailable", city: shipment.sender_city ?? "", country: shipment.sender_country ?? "" },
+            receiver: { name: shipment.recipient_name ?? "Receiver", address: shipment.recipient_address ?? "Address unavailable", city: shipment.recipient_city ?? "", country: shipment.recipient_country ?? "" },
             package: { type: shipment.package_type ?? "Box", weight: `${shipment.weight_kg ?? 0} kg`, dimensions: shipment.dimensions ?? "—", pieces: 1 },
             events: [],
           }} />
@@ -247,8 +247,8 @@ function DbView({ shipment, events }: { shipment: DbShipment; events: DbEvent[] 
       </div>
 
       <aside className="space-y-6">
-        <Party title="Sender" p={{ name: shipment.sender_name, address: shipment.sender_address, city: `${shipment.sender_city ?? ""}${shipment.sender_country ? ", " + shipment.sender_country : ""}` }} />
-        <Party title="Receiver" p={{ name: shipment.recipient_name, address: shipment.recipient_address, city: `${shipment.recipient_city ?? ""}${shipment.recipient_country ? ", " + shipment.recipient_country : ""}` }} />
+         <Party title="Sender" p={{ name: shipment.sender_name ?? "Information unavailable", address: shipment.sender_address ?? "Address withheld", city: `${shipment.sender_city ?? ""}${shipment.sender_country ? ", " + shipment.sender_country : ""}` }} />
+         <Party title="Receiver" p={{ name: shipment.recipient_name ?? "Information unavailable", address: shipment.recipient_address ?? "Address withheld", city: `${shipment.recipient_city ?? ""}${shipment.recipient_country ? ", " + shipment.recipient_country : ""}` }} />
         <div className="rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"><Package className="h-3.5 w-3.5" /> Package</div>
           <dl className="mt-3 space-y-2 text-sm">

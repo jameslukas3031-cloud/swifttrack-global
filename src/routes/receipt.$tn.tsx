@@ -33,10 +33,10 @@ function ReceiptPage() {
   const barcodeRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    supabase.from("shipments").select("*").eq("tracking_number", tn).maybeSingle().then(({ data }) => {
-      setS((data ?? null) as S | null);
-      setLoading(false);
-    });
+    fetch(`/api/public/track?tn=${encodeURIComponent(tn)}`)
+      .then((response) => response.ok ? response.json() as Promise<{ shipment: S | null }> : { shipment: null })
+      .then(({ shipment }) => { setS(shipment); setLoading(false); })
+      .catch(() => { setS(null); setLoading(false); });
     QRCode.toDataURL(tn, { width: 220, margin: 1 }).then(setQrDataUrl).catch(() => {});
   }, [tn]);
 

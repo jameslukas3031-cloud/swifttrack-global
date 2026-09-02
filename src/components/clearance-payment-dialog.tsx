@@ -39,6 +39,8 @@ export function ClearancePaymentDialog({
   }, []);
 
   async function submit() {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return toast.error("Sign in to submit a clearance payment for this shipment.");
     if (!selected) return toast.error("Choose a payment method");
     const amt = Number(amount);
     if (!amt || amt <= 0) return toast.error("Enter the amount you paid");

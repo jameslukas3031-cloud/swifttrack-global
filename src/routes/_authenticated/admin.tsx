@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Camera, Upload, Trash2, Search, Package, Users, CreditCard, TrendingUp, MapPin } from "lucide-react";
 import { deleteUserAccount } from "@/lib/admin-users.functions";
+import { reviewClearancePayment } from "@/lib/admin-actions.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -61,9 +62,8 @@ function AdminPage() {
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return navigate({ to: "/auth" });
-      const { data: isSuper } = await supabase.rpc("is_super_admin", { _user_id: u.user.id });
-      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
-      const ok = !!isSuper || !!isAdmin;
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
+      const ok = (roles ?? []).some((role) => role.role === "super_admin" || role.role === "admin");
       setAuthorized(ok);
       if (ok) loadAll();
     })();
@@ -943,8 +943,11 @@ function ClearanceView({ shipments, reload }: { shipments: Shipment[]; reload: (
 
   async function review(id: string, approve: boolean) {
     const note = approve ? undefined : window.prompt("Reason for rejection (optional)") ?? undefined;
-    const { error } = await supabase.rpc("review_clearance_payment", { _payment_id: id, _approve: approve, _note: note });
-    if (error) return toast.error(error.message);
+    try {
+      await reviewClearancePayment({ data: { paymentId: id, approve, note } });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "Could not review payment");
+    }
     toast.success(approve ? "Payment approved" : "Payment rejected");
     load(); reload();
   }
