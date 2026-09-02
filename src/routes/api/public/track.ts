@@ -19,13 +19,14 @@ export const Route = createFileRoute("/api/public/track")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: shipment, error } = await supabaseAdmin
+        const { data: rawShipment, error } = await supabaseAdmin
           .from("shipments")
           .select(safeShipmentFields)
           .eq("tracking_number", trackingNumber)
           .maybeSingle();
 
         if (error) return Response.json({ error: "Tracking lookup failed" }, { status: 500 });
+        const shipment = rawShipment as (Record<string, unknown> & { id: string }) | null;
         if (!shipment) return Response.json({ shipment: null, events: [] });
 
         const { data: events, error: eventsError } = await supabaseAdmin

@@ -20,7 +20,7 @@ export const reviewClearancePayment = createServerFn({ method: "POST" })
     const { data: payment, error } = await supabaseAdmin.rpc("review_clearance_payment", {
       _payment_id: data.paymentId,
       _approve: data.approve,
-      _note: data.note ?? null,
+      _note: data.note,
     });
     if (error) throw new Error(error.message);
     return payment;

@@ -25,6 +25,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReceiptTnRouteImport } from './routes/receipt.$tn'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
+import { Route as ApiPublicParcelImageRouteImport } from './routes/api/public/parcel-image'
 
 const TrackRoute = TrackRouteImport.update({
   id: '/track',
@@ -105,6 +107,16 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
+  id: '/api/public/track',
+  path: '/api/public/track',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicParcelImageRoute = ApiPublicParcelImageRouteImport.update({
+  id: '/api/public/parcel-image',
+  path: '/api/public/parcel-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -122,6 +134,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/receipt/$tn': typeof ReceiptTnRoute
+  '/api/public/parcel-image': typeof ApiPublicParcelImageRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -139,6 +153,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/receipt/$tn': typeof ReceiptTnRoute
+  '/api/public/parcel-image': typeof ApiPublicParcelImageRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -158,6 +174,8 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/receipt/$tn': typeof ReceiptTnRoute
+  '/api/public/parcel-image': typeof ApiPublicParcelImageRoute
+  '/api/public/track': typeof ApiPublicTrackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -177,6 +195,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/receipt/$tn'
+    | '/api/public/parcel-image'
+    | '/api/public/track'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -194,6 +214,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/receipt/$tn'
+    | '/api/public/parcel-image'
+    | '/api/public/track'
   id:
     | '__root__'
     | '/'
@@ -212,6 +234,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/receipt/$tn'
+    | '/api/public/parcel-image'
+    | '/api/public/track'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -229,6 +253,8 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TrackRoute: typeof TrackRoute
   ReceiptTnRoute: typeof ReceiptTnRoute
+  ApiPublicParcelImageRoute: typeof ApiPublicParcelImageRoute
+  ApiPublicTrackRoute: typeof ApiPublicTrackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -345,6 +371,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/track': {
+      id: '/api/public/track'
+      path: '/api/public/track'
+      fullPath: '/api/public/track'
+      preLoaderRoute: typeof ApiPublicTrackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/parcel-image': {
+      id: '/api/public/parcel-image'
+      path: '/api/public/parcel-image'
+      fullPath: '/api/public/parcel-image'
+      preLoaderRoute: typeof ApiPublicParcelImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -376,6 +416,8 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TrackRoute: TrackRoute,
   ReceiptTnRoute: ReceiptTnRoute,
+  ApiPublicParcelImageRoute: ApiPublicParcelImageRoute,
+  ApiPublicTrackRoute: ApiPublicTrackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
