@@ -18,14 +18,8 @@ export function toStoragePath(value: string | null | undefined): string | null {
 export async function getParcelImageUrl(value: string | null | undefined): Promise<string | null> {
   const path = toStoragePath(value);
   if (!path) return null;
-  try {
-    const response = await fetch(`/api/public/parcel-image?path=${encodeURIComponent(path)}`);
-    if (!response.ok) return null;
-    const data = await response.json() as { url?: string };
-    return data.url ?? null;
-  } catch {
-    return null;
-  }
+  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
 }
 
 /** Resolves a stored parcel image reference to a temporary viewable URL. */
