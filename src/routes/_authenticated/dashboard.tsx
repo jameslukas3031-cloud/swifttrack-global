@@ -45,7 +45,7 @@ function DashboardPage() {
       const roles = (rr ?? []).map((r) => r.role as string);
       const best = roles.includes("super_admin") ? "Super Admin" : roles.includes("admin") ? "Admin" : "User";
       setRoleLabel(best);
-      setIsAdmin(best !== "User");
+       setIsAdmin(roles.includes("super_admin"));
       const { data } = await supabase.from("shipments").select("*").eq("user_id", u.user.id).order("created_at", { ascending: false });
       setShipments((data ?? []) as Shipment[]);
       setLoading(false);
