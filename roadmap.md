@@ -1,2 +1,2 @@
-- [ ] Restore existing public tracking parcel-photo visibility and clearance option using current data, storage, and permissions.
-- [ ] Verify both designated super admins can access the Admin Dashboard.
+- [x] Restore existing public tracking parcel-photo visibility and clearance option using current data, storage, and permissions.
+- [x] Verify both designated super admins can access the Admin Dashboard.
