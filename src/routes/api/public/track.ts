@@ -5,6 +5,8 @@ const safeShipmentFields = [
   "recipient_city", "recipient_country", "weight_kg", "dimensions", "package_type",
   "shipping_method", "courier_name", "estimated_delivery", "created_at", "updated_at",
   "origin_lat", "origin_lng", "destination_lat", "destination_lng", "current_lat", "current_lng",
+  "parcel_image_url", "clearance_required", "clearance_fee", "clearance_paid",
+  "clearance_status", "clearance_instructions", "payment_status", "amount_paid", "shipping_fee",
 ].join(",");
 
 export const Route = createFileRoute("/api/public/track")({
