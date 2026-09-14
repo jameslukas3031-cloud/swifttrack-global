@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentAdminAccess } from "@/lib/admin-access";
 
 export type AppRole = "super_admin" | "admin" | "staff" | "user" | "customer";
 
@@ -30,17 +31,27 @@ export function useUserRole(userId?: string) {
   const [checked, setChecked] = useState(false);
   useEffect(() => {
     if (!userId) { setRole(null); setChecked(true); return; }
-    supabase.from("user_roles").select("role").eq("user_id", userId).then(({ data }) => {
-      const roles = (data ?? []).map((r) => r.role as AppRole);
-      const best: AppRole | null =
-        roles.includes("super_admin") ? "super_admin" :
-        roles.includes("admin") ? "admin" :
-        roles.includes("staff") ? "staff" :
-        roles.includes("user") ? "user" :
-        roles.includes("customer") ? "user" : null;
-      setRole(best);
-      setChecked(true);
+    let active = true;
+    getCurrentAdminAccess().then(({ user, isAdmin }) => {
+      if (!active || user?.id !== userId) return;
+      if (isAdmin) {
+        setRole("super_admin");
+        setChecked(true);
+        return;
+      }
+      supabase.from("user_roles").select("role").eq("user_id", userId).then(({ data }) => {
+        if (!active) return;
+        const roles = (data ?? []).map((r) => r.role as AppRole);
+        const best: AppRole | null =
+          roles.includes("admin") ? "admin" :
+          roles.includes("staff") ? "staff" :
+          roles.includes("user") ? "user" :
+          roles.includes("customer") ? "user" : null;
+        setRole(best);
+        setChecked(true);
+      });
     });
+    return () => { active = false; };
   }, [userId]);
   return { role, isSuperAdmin: role === "super_admin", isAdmin: role === "super_admin" || role === "admin", checked };
 }
