@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Camera, Upload, Trash2, Search, Package, Users, CreditCard, TrendingUp, MapPin } from "lucide-react";
 import { deleteUserAccount } from "@/lib/admin-users.functions";
 import { reviewClearancePayment } from "@/lib/admin-actions.functions";
+import { getCurrentAdminAccess } from "@/lib/admin-access";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -60,12 +61,10 @@ function AdminPage() {
 
   useEffect(() => {
     (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return navigate({ to: "/auth" });
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-      const ok = (roles ?? []).some((role) => role.role === "super_admin");
-      setAuthorized(ok);
-      if (ok) loadAll();
+      const access = await getCurrentAdminAccess();
+      if (!access.user) return navigate({ to: "/auth" });
+      setAuthorized(access.isAdmin);
+      if (access.isAdmin) loadAll();
     })();
   }, [navigate]);
 

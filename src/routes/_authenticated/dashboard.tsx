@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Package, MapPin, Clock, CheckCircle2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { getCurrentAdminAccess } from "@/lib/admin-access";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   ssr: false,
@@ -41,11 +42,12 @@ function DashboardPage() {
       if (!u.user) return navigate({ to: "/auth" });
       setUserEmail(u.user.email ?? null);
       setUserId(u.user.id);
-      const { data: rr } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-      const roles = (rr ?? []).map((r) => r.role as string);
-      const best = roles.includes("super_admin") ? "Super Admin" : roles.includes("admin") ? "Admin" : "User";
+       const access = await getCurrentAdminAccess();
+       const { data: rr } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
+       const roles = (rr ?? []).map((r) => r.role as string);
+       const best = access.isAdmin ? "Super Admin" : roles.includes("admin") ? "Admin" : "User";
       setRoleLabel(best);
-       setIsAdmin(roles.includes("super_admin"));
+       setIsAdmin(access.isAdmin);
       const { data } = await supabase.from("shipments").select("*").eq("user_id", u.user.id).order("created_at", { ascending: false });
       setShipments((data ?? []) as Shipment[]);
       setLoading(false);
