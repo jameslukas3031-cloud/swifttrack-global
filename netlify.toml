@@ -5,13 +5,6 @@
 [build.environment]
   NODE_VERSION = "22"
   NITRO_PRESET = "netlify"
-  # These are publishable project connection values used by the browser and
-  # authenticated server middleware. Private service credentials stay in
-  # Netlify's environment settings and are never committed here.
-  VITE_SUPABASE_URL = "https://dgjaofewsckklcuxkgkh.supabase.co"
-  VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnamFvZmV3c2Nra2xjdXhrZ2toIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjE0MDAsImV4cCI6MjA5OTE5NzQwMH0._KAgCFYPtR93l_M5SsmCALJbKpEjklrW7Bow-sVGAJE"
-  SUPABASE_URL = "https://dgjaofewsckklcuxkgkh.supabase.co"
-  SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJZbWFzdGVyMzAiLCJyZWYiOiJkZ2phb2Zld3Nja2tsY3V4a2dra2giLCJyb2xlIjoiYW5vbiJ9"
 
 # Deep links / refresh: the build emits `dist/_redirects` with a catch-all rule
 # ("/*" -> server handler, 200) plus a `preferStatic` server function, so every
