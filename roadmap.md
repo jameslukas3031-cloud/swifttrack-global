@@ -1,2 +1,3 @@
 - [x] Restore existing public tracking parcel-photo visibility and clearance option using current data, storage, and permissions.
 - [x] Verify both designated super admins can access the Admin Dashboard.
+- [ ] Ensure authorized admin roles reach the Administrator Dashboard on the live hosting domain and Netlify deployment without changing app data or security policies.
