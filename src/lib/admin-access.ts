@@ -3,8 +3,6 @@ import { getAdminAccess } from "@/lib/admin-access.functions";
 
 export type AdminRole = "super_admin";
 
-type RoleRow = { role: string };
-
 const ROLE_RETRY_DELAYS = [0, 250, 750];
 
 export async function getCurrentAdminAccess() {
