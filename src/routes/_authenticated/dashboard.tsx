@@ -43,10 +43,7 @@ function DashboardPage() {
       setUserEmail(u.user.email ?? null);
       setUserId(u.user.id);
        const access = await getCurrentAdminAccess();
-       const { data: rr } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-       const roles = (rr ?? []).map((r) => r.role as string);
-       const best = access.isAdmin ? "Super Admin" : roles.includes("admin") ? "Admin" : "User";
-      setRoleLabel(best);
+       setRoleLabel(access.isAdmin ? "Super Admin" : "User");
        setIsAdmin(access.isAdmin);
       const { data } = await supabase.from("shipments").select("*").eq("user_id", u.user.id).order("created_at", { ascending: false });
       setShipments((data ?? []) as Shipment[]);
