@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getAdminAccess } from "@/lib/admin-access.functions";
 
 export type AdminRole = "super_admin";
 
@@ -16,21 +17,17 @@ export async function getCurrentAdminAccess() {
   for (const delay of ROLE_RETRY_DELAYS) {
     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
 
-    const { data: roles, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id);
-
-    if (!error) {
-      const isAdmin = (roles as RoleRow[] | null ?? []).some((row) => row.role === "super_admin");
+    try {
+      const { isAdmin } = await getAdminAccess();
       return {
         user: userData.user,
         role: isAdmin ? ("super_admin" as AdminRole) : null,
         isAdmin,
         error: null,
       };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
     }
-    lastError = error;
   }
 
   return { user: userData.user, role: null as AdminRole | null, isAdmin: false, error: lastError };

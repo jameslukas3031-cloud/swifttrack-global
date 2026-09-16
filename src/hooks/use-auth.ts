@@ -39,17 +39,9 @@ export function useUserRole(userId?: string) {
         setChecked(true);
         return;
       }
-      supabase.from("user_roles").select("role").eq("user_id", userId).then(({ data }) => {
-        if (!active) return;
-        const roles = (data ?? []).map((r) => r.role as AppRole);
-        const best: AppRole | null =
-          roles.includes("admin") ? "admin" :
-          roles.includes("staff") ? "staff" :
-          roles.includes("user") ? "user" :
-          roles.includes("customer") ? "user" : null;
-        setRole(best);
-        setChecked(true);
-      });
+      if (!active) return;
+      setRole("user");
+      setChecked(true);
     });
     return () => { active = false; };
   }, [userId]);
